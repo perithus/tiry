@@ -8,15 +8,18 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 7rem;
 }
 
 body {
   @apply bg-sand text-ink-900 antialiased;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   background-image:
-    radial-gradient(circle at top, rgba(24, 170, 157, 0.07), transparent 30%),
-    radial-gradient(circle at 85% 12%, rgba(110, 134, 175, 0.12), transparent 22%),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.85), rgba(246, 242, 235, 0.96));
+    radial-gradient(circle at top, rgba(24, 170, 157, 0.08), transparent 32%),
+    radial-gradient(circle at 85% 12%, rgba(110, 134, 175, 0.14), transparent 24%),
+    radial-gradient(circle at 15% 85%, rgba(196, 168, 116, 0.12), transparent 20%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.82), rgba(246, 242, 235, 0.97));
+  min-height: 100vh;
 }
 
 a,
@@ -40,7 +43,7 @@ textarea {
 }
 
 .glass-panel {
-  @apply rounded-3xl border border-white/60 bg-white/80 shadow-soft backdrop-blur;
+  @apply rounded-3xl border border-white/70 bg-white/82 shadow-soft backdrop-blur;
 }
 
 .glass-panel-premium {
@@ -64,7 +67,7 @@ textarea {
 }
 
 .metric-card {
-  @apply rounded-3xl border border-ink-100 bg-white p-6 shadow-sm;
+  @apply rounded-3xl border border-white/80 bg-white/90 p-6 shadow-sm;
 }
 
 .animate-rise {
@@ -91,8 +94,52 @@ textarea {
 .hero-orb {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(20px);
+  filter: blur(24px);
   opacity: 0.8;
+  pointer-events: none;
+}
+
+.section-wash {
+  position: relative;
+}
+
+.section-wash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0)),
+    radial-gradient(circle at top left, rgba(24, 170, 157, 0.08), transparent 28%);
+  pointer-events: none;
+}
+
+.hero-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent 88%);
+  pointer-events: none;
+}
+
+.premium-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.18), transparent);
+}
+
+.ambient-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.ambient-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -55% 40%;
+  height: 10rem;
+  background: radial-gradient(circle, rgba(24, 170, 157, 0.12), transparent 60%);
   pointer-events: none;
 }
 
@@ -105,6 +152,21 @@ textarea {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-rise,
+  .animate-float,
+  .animate-glow,
+  .hover-lift {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
   }
 }
 
