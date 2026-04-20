@@ -22,3 +22,8 @@ export const adminListingReviewSchema = z.object({
   status: z.enum(["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"]),
   verificationStatus: z.enum(["UNVERIFIED", "PENDING", "VERIFIED", "REJECTED"])
 });
+
+export const adminVerificationDocumentReviewSchema = z.object({
+  documentId: z.string().cuid(),
+  status: z.enum(["UNVERIFIED", "PENDING", "VERIFIED", "REJECTED"])
+});

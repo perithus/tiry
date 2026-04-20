@@ -1,11 +1,11 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { addVerificationDocument } from "@/lib/actions/company";
 import { requireRole } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db/prisma";
 import { getFleetNav } from "@/lib/data/navigation";
 import { getLocale } from "@/lib/i18n/server";
-import { addVerificationDocument } from "@/lib/actions/company";
 
 const copy = {
   en: {
@@ -19,7 +19,8 @@ const copy = {
     sizeBytes: "File size (bytes)",
     storageKey: "Storage key",
     save: "Add document",
-    noDocuments: "No documents uploaded yet."
+    noDocuments: "No documents uploaded yet.",
+    reviewed: "Reviewed"
   },
   pl: {
     title: "Panel floty",
@@ -32,7 +33,8 @@ const copy = {
     sizeBytes: "Rozmiar pliku (bajty)",
     storageKey: "Klucz storage",
     save: "Dodaj dokument",
-    noDocuments: "Nie dodano jeszcze żadnych dokumentów."
+    noDocuments: "Nie dodano jeszcze żadnych dokumentów.",
+    reviewed: "Sprawdzono"
   }
 } as const;
 
@@ -65,7 +67,12 @@ export default async function FleetVerificationPage() {
                     <div>
                       <h3 className="text-lg font-semibold text-ink-900">{document.filename}</h3>
                       <p className="mt-2 text-sm text-ink-600">{document.type.replaceAll("_", " ")}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-ink-500">{document.mimeType} · {document.sizeBytes} B</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-ink-500">{document.mimeType} • {document.sizeBytes} B</p>
+                      {document.reviewedAt ? (
+                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-ink-500">
+                          {t.reviewed}: {document.reviewedAt.toLocaleDateString(locale)}
+                        </p>
+                      ) : null}
                     </div>
                     <StatusBadge label={document.status} tone={getTone(document.status)} />
                   </div>

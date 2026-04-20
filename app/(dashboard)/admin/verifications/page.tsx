@@ -1,11 +1,11 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { reviewCompany, reviewVerificationDocument } from "@/lib/actions/admin";
 import { requireRole } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db/prisma";
 import { getAdminNav } from "@/lib/data/navigation";
 import { getLocale } from "@/lib/i18n/server";
-import { reviewCompany } from "@/lib/actions/admin";
 
 const copy = {
   en: {
@@ -18,7 +18,9 @@ const copy = {
     documents: "Documents",
     verification: "Verification",
     companyStatus: "Company status",
+    documentStatus: "Document status",
     save: "Save review",
+    saveDocument: "Save document",
     noHeadquarters: "Unknown HQ",
     noDocuments: "No documents uploaded"
   },
@@ -32,7 +34,9 @@ const copy = {
     documents: "Dokumenty",
     verification: "Weryfikacja",
     companyStatus: "Status firmy",
+    documentStatus: "Status dokumentu",
     save: "Zapisz review",
+    saveDocument: "Zapisz dokument",
     noHeadquarters: "Nieznana siedziba",
     noDocuments: "Brak dodanych dokumentów"
   }
@@ -68,9 +72,12 @@ export default async function AdminVerificationsPage() {
           id: true,
           type: true,
           status: true,
-          filename: true
+          filename: true,
+          mimeType: true,
+          sizeBytes: true,
+          reviewedAt: true
         },
-        take: 3,
+        take: 6,
         orderBy: { createdAt: "desc" }
       },
       _count: {
@@ -115,13 +122,35 @@ export default async function AdminVerificationsPage() {
                         <p className="text-sm text-ink-600">{t.noDocuments}</p>
                       ) : (
                         company.verificationDocs.map((document) => (
-                          <div key={document.id} className="flex items-center justify-between gap-3 rounded-2xl border border-ink-100 px-3 py-2">
-                            <div>
-                              <p className="text-sm font-medium text-ink-900">{document.type}</p>
-                              <p className="text-xs text-ink-500">{document.filename}</p>
+                          <form key={document.id} action={reviewVerificationDocument} className="rounded-2xl border border-ink-100 px-3 py-3">
+                            <input type="hidden" name="documentId" value={document.id} />
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium text-ink-900">{document.type}</p>
+                                <p className="text-xs text-ink-500">{document.filename}</p>
+                                <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-ink-400">
+                                  {document.mimeType} • {document.sizeBytes} B
+                                </p>
+                                {document.reviewedAt ? (
+                                  <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-ink-400">
+                                    {document.reviewedAt.toLocaleDateString(locale)}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <StatusBadge label={document.status} tone={getTone(document.status)} />
                             </div>
-                            <StatusBadge label={document.status} tone={getTone(document.status)} />
-                          </div>
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                              <select name="status" defaultValue={document.status} className="w-full rounded-2xl border border-ink-200 bg-white px-3 py-2 text-sm">
+                                <option value="UNVERIFIED">UNVERIFIED</option>
+                                <option value="PENDING">PENDING</option>
+                                <option value="VERIFIED">VERIFIED</option>
+                                <option value="REJECTED">REJECTED</option>
+                              </select>
+                              <button className="rounded-2xl bg-ink-900 px-4 py-2 text-sm font-medium text-white hover:bg-ink-800">
+                                {t.saveDocument}
+                              </button>
+                            </div>
+                          </form>
                         ))
                       )}
                     </div>

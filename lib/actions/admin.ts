@@ -9,7 +9,8 @@ import {
   adminCompanyReviewSchema,
   adminInquiryUpdateSchema,
   adminListingReviewSchema,
-  adminUserUpdateSchema
+  adminUserUpdateSchema,
+  adminVerificationDocumentReviewSchema
 } from "@/lib/validation/admin";
 
 export async function moderateListing(listingId: string, status: ListingStatus, verificationStatus: VerificationStatus) {
@@ -165,5 +166,40 @@ export async function reviewListing(formData: FormData) {
   });
 
   revalidatePath("/admin/listings");
+  revalidatePath("/admin");
+}
+
+export async function reviewVerificationDocument(formData: FormData) {
+  const session = await requireRole("ADMIN");
+  const parsed = adminVerificationDocumentReviewSchema.safeParse({
+    documentId: formData.get("documentId"),
+    status: formData.get("status")
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid verification document payload.");
+  }
+
+  await prisma.verificationDocument.update({
+    where: { id: parsed.data.documentId },
+    data: {
+      status: parsed.data.status,
+      reviewedAt: new Date()
+    }
+  });
+
+  await createAuditLog({
+    actorId: session.user.id,
+    action: AuditAction.VERIFICATION_REVIEWED,
+    entityType: "VerificationDocument",
+    entityId: parsed.data.documentId,
+    metadata: {
+      status: parsed.data.status
+    }
+  });
+
+  revalidatePath("/admin/verifications");
+  revalidatePath("/fleet/verification");
+  revalidatePath("/fleet");
   revalidatePath("/admin");
 }
