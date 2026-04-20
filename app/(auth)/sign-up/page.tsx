@@ -1,0 +1,35 @@
+import Link from "next/link";
+import { Logo } from "@/components/branding/logo";
+import { SignUpForm } from "@/components/forms/sign-up-form";
+import { getLocale } from "@/lib/i18n/server";
+import { getMessages } from "@/lib/i18n/messages";
+
+export default async function SignUpPage() {
+  const locale = await getLocale();
+  const t = getMessages(locale);
+
+  return (
+    <div className="container-shell flex min-h-screen items-center justify-center py-16">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/60 bg-white shadow-soft lg:grid-cols-2">
+        <div className="bg-ink-900 p-10 text-white">
+          <Logo className="text-white [&>span:last-child]:text-white" />
+          <h1 className="font-display mt-10 text-4xl font-semibold tracking-tight">{t.auth.signUpHero}</h1>
+          <p className="mt-5 text-sm leading-7 text-white/80">{t.auth.signUpDescription}</p>
+        </div>
+        <div className="p-10">
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-ink-900">{t.auth.signUpTitle}</h2>
+          <p className="mt-2 text-sm text-ink-600">{t.auth.signUpLead}</p>
+          <div className="mt-8">
+            <SignUpForm locale={locale} />
+          </div>
+          <p className="mt-6 text-sm text-ink-600">
+            {t.auth.alreadyRegistered}{" "}
+            <Link href="/sign-in" className="font-medium text-teal-700 hover:text-teal-800">
+              {t.nav.signIn}
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-sand text-ink-900 antialiased;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  background-image:
+    radial-gradient(circle at top, rgba(24, 170, 157, 0.07), transparent 30%),
+    radial-gradient(circle at 85% 12%, rgba(110, 134, 175, 0.12), transparent 22%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.85), rgba(246, 242, 235, 0.96));
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  @apply transition duration-200 ease-out;
+}
+
+::selection {
+  @apply bg-teal-200 text-ink-900;
+}
+
+.container-shell {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+.font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}
+
+.glass-panel {
+  @apply rounded-3xl border border-white/60 bg-white/80 shadow-soft backdrop-blur;
+}
+
+.glass-panel-premium {
+  @apply rounded-[2rem] border border-white/70 bg-white/80 shadow-soft backdrop-blur-xl;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-panel-premium::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.65), transparent 40%),
+    radial-gradient(circle at top right, rgba(24, 170, 157, 0.14), transparent 30%);
+  pointer-events: none;
+}
+
+.dashboard-grid {
+  @apply grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)];
+}
+
+.metric-card {
+  @apply rounded-3xl border border-ink-100 bg-white p-6 shadow-sm;
+}
+
+.animate-rise {
+  animation: riseIn 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-float {
+  animation: floatSoft 6s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glowPulse 6.5s ease-in-out infinite;
+}
+
+.hover-lift {
+  @apply transition duration-300 ease-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.14);
+}
+
+.hero-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(20px);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatSoft {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 0.85;
+  }
+}

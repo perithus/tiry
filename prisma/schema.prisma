@@ -1,0 +1,662 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADVERTISER
+  CARRIER_OWNER
+  FLEET_MANAGER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  INVITED
+}
+
+enum CompanyStatus {
+  DRAFT
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VehicleType {
+  TRUCK
+  TRAILER
+  TRUCK_TRAILER
+  VAN
+}
+
+enum TrailerType {
+  BOX
+  CURTAINSIDER
+  REFRIGERATED
+  TANKER
+  FLATBED
+  MEGA
+  OTHER
+}
+
+enum AdSurfaceType {
+  REAR_DOORS
+  TRAILER_SIDE_LEFT
+  TRAILER_SIDE_RIGHT
+  CABIN
+  FULL_WRAP
+}
+
+enum PricingModel {
+  FIXED_MONTHLY
+  CPM_ESTIMATE
+  ROUTE_PACKAGE
+  CUSTOM_QUOTE
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum RouteScope {
+  DOMESTIC
+  INTERNATIONAL
+  MIXED
+}
+
+enum InquiryStatus {
+  SUBMITTED
+  IN_REVIEW
+  OFFER_SENT
+  BOOKED
+  DECLINED
+  CLOSED
+}
+
+enum OfferStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignStatus {
+  DRAFT
+  PLANNING
+  NEGOTIATION
+  READY_TO_BOOK
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CampaignSource {
+  MARKETPLACE_INQUIRY
+  DIRECT_SALES
+  REFERRAL
+  PARTNER
+  OTHER
+}
+
+enum CampaignTaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+enum ContentPageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ConversationType {
+  INQUIRY
+  SUPPORT
+}
+
+enum NotificationType {
+  INQUIRY
+  OFFER
+  BOOKING
+  MESSAGE
+  SYSTEM
+}
+
+enum DocumentType {
+  COMPANY_REGISTRATION
+  VAT_CERTIFICATE
+  INSURANCE
+  IDENTITY
+  OTHER
+}
+
+enum ReviewTargetType {
+  COMPANY
+  CAMPAIGN
+}
+
+enum AuditAction {
+  SIGN_IN
+  SIGN_OUT
+  SIGN_UP
+  USER_UPDATED
+  COMPANY_UPDATED
+  LISTING_CREATED
+  LISTING_UPDATED
+  LISTING_MODERATED
+  VERIFICATION_REVIEWED
+  INQUIRY_UPDATED
+  CAMPAIGN_CREATED
+  CAMPAIGN_UPDATED
+  CAMPAIGN_NOTE_CREATED
+  CAMPAIGN_TASK_CREATED
+  CONTENT_PAGE_UPDATED
+  FAQ_ITEM_UPDATED
+  ROLE_CHANGED
+}
+
+model User {
+  id                    String                   @id @default(cuid())
+  email                 String                   @unique
+  passwordHash          String
+  name                  String
+  role                  UserRole
+  status                UserStatus               @default(PENDING_VERIFICATION)
+  emailVerifiedAt       DateTime?
+  phone                 String?
+  avatarUrl             String?
+  onboardingCompletedAt DateTime?
+  companyId             String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  company               Company?                 @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  sessions              Session[]
+  advertiserInquiries   CampaignInquiry[]        @relation("AdvertiserInquiries")
+  carrierOffers         CampaignOffer[]          @relation("CarrierOffers")
+  messages              Message[]
+  notifications         Notification[]
+  verificationDocs      VerificationDocument[]
+  reviewsWritten        Review[]                 @relation("ReviewAuthor")
+  savedListings         SavedListing[]
+  auditLogs             AuditLog[]               @relation("AuditActor")
+  advertiserCampaigns   Campaign[]               @relation("CampaignAdvertiser")
+  ownedCampaigns        Campaign[]               @relation("CampaignOwner")
+  campaignNotes         CampaignNote[]           @relation("CampaignNoteAuthor")
+  assignedCampaignTasks CampaignTask[]           @relation("CampaignTaskAssignee")
+  contentPages         ContentPage[]             @relation("ContentPageEditor")
+  faqItems             FaqItem[]                 @relation("FaqItemEditor")
+
+  @@index([role, status])
+  @@index([companyId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  lastSeenAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Company {
+  id                   String                 @id @default(cuid())
+  legalName            String
+  slug                 String                 @unique
+  displayName          String
+  description          String?
+  websiteUrl           String?
+  email                String?
+  phone                String?
+  headquartersCity     String?
+  headquartersCountry  String?
+  vatNumber            String?
+  fleetSize            Int                    @default(0)
+  verificationStatus   VerificationStatus     @default(UNVERIFIED)
+  status               CompanyStatus          @default(DRAFT)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  users                User[]
+  fleets               Fleet[]
+  vehicles             Vehicle[]
+  listings             Listing[]
+  verificationDocs     VerificationDocument[]
+  reviews              Review[]               @relation("CompanyReviews")
+  campaigns            Campaign[]
+
+  @@index([status, verificationStatus])
+  @@index([headquartersCountry])
+}
+
+model Fleet {
+  id          String    @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  vehicleCount Int      @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicles    Vehicle[]
+
+  @@index([companyId])
+}
+
+model Vehicle {
+  id                     String         @id @default(cuid())
+  companyId              String
+  fleetId                String?
+  name                   String
+  registrationCountry    String
+  vehicleType            VehicleType
+  trailerType            TrailerType?
+  monthlyMileageKm       Int?
+  estimatedMonthlyReach  Int?
+  active                 Boolean        @default(true)
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  company                Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fleet                  Fleet?         @relation(fields: [fleetId], references: [id], onDelete: SetNull)
+  adSurfaces             AdSurface[]
+  listings               Listing[]
+
+  @@index([companyId, active])
+  @@index([fleetId])
+  @@index([vehicleType, trailerType])
+}
+
+model AdSurface {
+  id                   String         @id @default(cuid())
+  vehicleId            String
+  type                 AdSurfaceType
+  widthMm              Int?
+  heightMm             Int?
+  notes                String?
+  active               Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  vehicle              Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  listings             Listing[]
+
+  @@index([vehicleId, type, active])
+}
+
+model Listing {
+  id                      String              @id @default(cuid())
+  slug                    String              @unique
+  companyId               String
+  vehicleId               String?
+  adSurfaceId             String?
+  title                   String
+  description             String
+  baseCity                String
+  baseCountry             String
+  routeScope              RouteScope
+  countriesCovered        String[]
+  citiesCovered           String[]
+  estimatedMonthlyMileage Int?
+  estimatedCampaignReach  Int?
+  pricingModel            PricingModel
+  priceFromCents          Int?
+  currency                String              @default("EUR")
+  availableFrom           DateTime?
+  availableTo             DateTime?
+  minimumCampaignDays     Int?
+  verificationStatus      VerificationStatus  @default(UNVERIFIED)
+  status                  ListingStatus       @default(DRAFT)
+  featured                Boolean             @default(false)
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  company                 Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle                 Vehicle?            @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  adSurface               AdSurface?          @relation(fields: [adSurfaceId], references: [id], onDelete: SetNull)
+  images                  ListingImage[]
+  routeCoverage           RouteCoverage[]
+  inquiries               CampaignInquiry[]
+  offers                  CampaignOffer[]
+  bookings                Booking[]
+  savedBy                 SavedListing[]
+  campaigns               Campaign[]           @relation("CampaignPrimaryListing")
+
+  @@index([status, verificationStatus, baseCountry])
+  @@index([pricingModel, availableFrom, availableTo])
+  @@index([companyId, createdAt])
+}
+
+model ListingImage {
+  id         String   @id @default(cuid())
+  listingId  String
+  url        String
+  alt        String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, sortOrder])
+}
+
+model RouteCoverage {
+  id             String     @id @default(cuid())
+  listingId      String
+  routeScope     RouteScope
+  country        String
+  city           String?
+  routeLabel     String?
+  createdAt      DateTime   @default(now())
+  listing        Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([country, city])
+}
+
+model CampaignInquiry {
+  id                    String           @id @default(cuid())
+  advertiserId          String
+  listingId             String
+  campaignName          String
+  message               String
+  budgetMinCents        Int?
+  budgetMaxCents        Int?
+  desiredStartDate      DateTime?
+  desiredEndDate        DateTime?
+  targetCountries       String[]
+  status                InquiryStatus    @default(SUBMITTED)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  advertiser            User             @relation("AdvertiserInquiries", fields: [advertiserId], references: [id], onDelete: Cascade)
+  listing               Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  offers                CampaignOffer[]
+  booking               Booking?
+  conversation          Conversation?
+  campaigns             Campaign[]
+
+  @@index([advertiserId, status, createdAt])
+  @@index([listingId, status])
+}
+
+model CampaignOffer {
+  id                    String         @id @default(cuid())
+  inquiryId             String
+  listingId             String
+  carrierContactId      String
+  title                 String
+  terms                 String
+  priceCents            Int
+  currency              String         @default("EUR")
+  status                OfferStatus    @default(DRAFT)
+  expiresAt             DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  inquiry               CampaignInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  listing               Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  carrierContact        User           @relation("CarrierOffers", fields: [carrierContactId], references: [id], onDelete: Cascade)
+  booking               Booking?
+
+  @@index([inquiryId, status])
+  @@index([listingId])
+}
+
+model Booking {
+  id                    String         @id @default(cuid())
+  inquiryId             String         @unique
+  offerId               String?        @unique
+  listingId             String
+  status                BookingStatus  @default(PENDING)
+  bookedFrom            DateTime
+  bookedTo              DateTime
+  totalPriceCents       Int
+  currency              String         @default("EUR")
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  inquiry               CampaignInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  offer                 CampaignOffer? @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  listing               Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, status])
+}
+
+model Conversation {
+  id              String           @id @default(cuid())
+  inquiryId       String?          @unique
+  type            ConversationType
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  inquiry         CampaignInquiry? @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  messages        Message[]
+}
+
+model Message {
+  id              String        @id @default(cuid())
+  conversationId  String
+  senderId        String
+  body            String
+  createdAt       DateTime      @default(now())
+  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime          @default(now())
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model VerificationDocument {
+  id               String             @id @default(cuid())
+  userId           String?
+  companyId        String?
+  type             DocumentType
+  filename         String
+  storageKey       String
+  mimeType         String
+  sizeBytes        Int
+  status           VerificationStatus @default(PENDING)
+  reviewedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  company          Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([userId, status])
+}
+
+model Review {
+  id                String           @id @default(cuid())
+  authorId          String
+  companyId         String?
+  bookingId         String?          @unique
+  targetType        ReviewTargetType
+  rating            Int
+  title             String
+  comment           String?
+  createdAt         DateTime         @default(now())
+  author            User             @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  company           Company?         @relation("CompanyReviews", fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, rating])
+  @@index([authorId])
+}
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  actorId      String?
+  action       AuditAction
+  entityType   String
+  entityId     String?
+  metadata     Json?
+  ipAddress    String?
+  createdAt    DateTime    @default(now())
+  actor        User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([action, entityType, createdAt])
+}
+
+model SavedListing {
+  id          String    @id @default(cuid())
+  userId      String
+  listingId   String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing     Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([listingId])
+}
+
+model Campaign {
+  id               String            @id @default(cuid())
+  name             String
+  slug             String            @unique
+  advertiserId     String
+  companyId        String?
+  primaryListingId String?
+  inquiryId        String?
+  ownerId          String?
+  status           CampaignStatus    @default(DRAFT)
+  priority         CampaignPriority  @default(MEDIUM)
+  source           CampaignSource    @default(MARKETPLACE_INQUIRY)
+  brief            String?
+  internalSummary  String?
+  budgetCents      Int?
+  currency         String            @default("EUR")
+  plannedStartDate DateTime?
+  plannedEndDate   DateTime?
+  bookedStartDate  DateTime?
+  bookedEndDate    DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  advertiser       User              @relation("CampaignAdvertiser", fields: [advertiserId], references: [id], onDelete: Cascade)
+  company          Company?          @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  primaryListing   Listing?          @relation("CampaignPrimaryListing", fields: [primaryListingId], references: [id], onDelete: SetNull)
+  inquiry          CampaignInquiry?  @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  owner            User?             @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  notes            CampaignNote[]
+  tasks            CampaignTask[]
+
+  @@index([advertiserId, status, createdAt])
+  @@index([ownerId, status])
+  @@index([companyId])
+  @@index([primaryListingId])
+  @@index([inquiryId])
+}
+
+model CampaignNote {
+  id         String    @id @default(cuid())
+  campaignId String
+  authorId   String
+  body       String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  author     User      @relation("CampaignNoteAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model CampaignTask {
+  id          String             @id @default(cuid())
+  campaignId  String
+  assigneeId  String?
+  title       String
+  description String?
+  status      CampaignTaskStatus @default(TODO)
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  campaign    Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignee    User?              @relation("CampaignTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, status, dueDate])
+  @@index([assigneeId, status])
+}
+
+model ContentPage {
+  id            String            @id @default(cuid())
+  slug          String            @unique
+  locale        String            @default("en")
+  title         String
+  seoTitle      String?
+  seoDescription String?
+  excerpt       String?
+  body          String
+  status        ContentPageStatus @default(DRAFT)
+  editedById    String?
+  publishedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  editedBy      User?             @relation("ContentPageEditor", fields: [editedById], references: [id], onDelete: SetNull)
+
+  @@unique([slug, locale])
+  @@index([status, locale, updatedAt])
+}
+
+model FaqItem {
+  id          String    @id @default(cuid())
+  locale      String    @default("en")
+  question    String
+  answer      String
+  category    String?
+  sortOrder   Int       @default(0)
+  active      Boolean   @default(true)
+  editedById  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  editedBy    User?     @relation("FaqItemEditor", fields: [editedById], references: [id], onDelete: SetNull)
+
+  @@index([locale, active, sortOrder])
+  @@index([category, locale])
+}
