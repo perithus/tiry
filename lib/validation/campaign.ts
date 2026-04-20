@@ -70,4 +70,14 @@ export const campaignStatusUpdateSchema = z.object({
   status: z.enum(campaignStatusValues)
 });
 
+export const campaignTaskStatusUpdateSchema = z.object({
+  taskId: z.string().cuid(),
+  campaignId: z.string().cuid(),
+  status: z.enum(campaignTaskStatusValues)
+});
+
+export const campaignFromInquirySchema = z.object({
+  inquiryId: z.string().cuid()
+});
+
 export type CampaignInput = z.infer<typeof campaignSchema>;

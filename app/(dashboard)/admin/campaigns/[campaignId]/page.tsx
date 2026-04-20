@@ -2,13 +2,18 @@ import { notFound } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { addCampaignNote, addCampaignTask, updateCampaignStatus } from "@/lib/actions/campaigns";
+import {
+  addCampaignNote,
+  addCampaignTask,
+  updateCampaignStatus,
+  updateCampaignTaskStatus
+} from "@/lib/actions/campaigns";
 import { requireRole } from "@/lib/auth/permissions";
 import { getAdminNav } from "@/lib/data/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getLocale } from "@/lib/i18n/server";
 import type { Locale } from "@/lib/i18n/shared";
-import { campaignStatusValues } from "@/lib/validation/campaign";
+import { campaignStatusValues, campaignTaskStatusValues } from "@/lib/validation/campaign";
 
 const copy = {
   en: {
@@ -39,7 +44,14 @@ const copy = {
     status: "Status",
     noteAuthor: "Author",
     noLinkedEntity: "Not linked",
-    createdAt: "Created"
+    createdAt: "Created",
+    booking: "Booking",
+    offer: "Accepted offer",
+    noOffer: "No accepted offer yet",
+    noBooking: "No booking yet",
+    inquiryBudget: "Inquiry budget",
+    updateTask: "Update task",
+    taskStatus: "Task status"
   },
   pl: {
     title: "Panel administratora",
@@ -69,7 +81,14 @@ const copy = {
     status: "Status",
     noteAuthor: "Autor",
     noLinkedEntity: "Brak powiązania",
-    createdAt: "Utworzono"
+    createdAt: "Utworzono",
+    booking: "Booking",
+    offer: "Zaakceptowana oferta",
+    noOffer: "Brak zaakceptowanej oferty",
+    noBooking: "Brak bookingu",
+    inquiryBudget: "Budżet inquiry",
+    updateTask: "Zaktualizuj task",
+    taskStatus: "Status taska"
   }
 } as const;
 
@@ -106,20 +125,40 @@ function formatDate(value: Date | null | undefined, locale: Locale) {
   }).format(value);
 }
 
+function formatCurrency(amountInCents: number | null | undefined, currency = "EUR") {
+  if (amountInCents == null) {
+    return "Custom";
+  }
+
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0
+  }).format(amountInCents / 100);
+}
+
 function getStatusTone(status: string): "neutral" | "success" | "warning" | "danger" {
-  if (status === "ACTIVE" || status === "COMPLETED" || status === "DONE") {
+  if (status === "ACTIVE" || status === "COMPLETED" || status === "DONE" || status === "CONFIRMED" || status === "ACCEPTED") {
     return "success";
   }
 
-  if (status === "NEGOTIATION" || status === "READY_TO_BOOK" || status === "IN_PROGRESS" || status === "BLOCKED") {
+  if (status === "NEGOTIATION" || status === "READY_TO_BOOK" || status === "IN_PROGRESS" || status === "BLOCKED" || status === "PENDING") {
     return "warning";
   }
 
-  if (status === "CANCELLED") {
+  if (status === "CANCELLED" || status === "REJECTED") {
     return "danger";
   }
 
   return "neutral";
+}
+
+function parseOfferTerms(terms: string) {
+  try {
+    return JSON.parse(terms) as { body?: string; bookedFrom?: string; bookedTo?: string };
+  } catch {
+    return { body: terms };
+  }
 }
 
 export default async function AdminCampaignDetailPage({ params }: { params: Promise<{ campaignId: string }> }) {
@@ -137,7 +176,14 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
         owner: true,
         company: true,
         primaryListing: true,
-        inquiry: true,
+        inquiry: {
+          include: {
+            offers: {
+              orderBy: { createdAt: "desc" }
+            },
+            booking: true
+          }
+        },
         notes: {
           include: {
             author: true
@@ -163,6 +209,9 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
     notFound();
   }
 
+  const acceptedOffer = campaign.inquiry?.offers.find((offer) => offer.status === "ACCEPTED") ?? null;
+  const parsedTerms = acceptedOffer ? parseOfferTerms(acceptedOffer.terms) : null;
+
   return (
     <DashboardShell
       title={t.title}
@@ -177,27 +226,18 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
             <div className="flex flex-wrap items-center gap-3">
               <StatusBadge label={campaign.status} tone={getStatusTone(campaign.status)} />
               <StatusBadge label={campaign.priority} tone={campaign.priority === "URGENT" ? "danger" : "neutral"} />
+              {campaign.inquiry?.booking ? <StatusBadge label={campaign.inquiry.booking.status} tone={getStatusTone(campaign.inquiry.booking.status)} /> : null}
             </div>
 
             <div className="mt-5 grid gap-3 text-sm text-ink-600 md:grid-cols-2">
-              <p>
-                <span className="font-medium text-ink-900">{t.advertiser}:</span> {campaign.advertiser.name}
-              </p>
-              <p>
-                <span className="font-medium text-ink-900">{t.owner}:</span> {campaign.owner?.name ?? t.unassigned}
-              </p>
-              <p>
-                <span className="font-medium text-ink-900">{t.company}:</span> {campaign.company?.displayName ?? t.noLinkedEntity}
-              </p>
-              <p>
-                <span className="font-medium text-ink-900">{t.linkedListing}:</span> {campaign.primaryListing?.title ?? t.noLinkedEntity}
-              </p>
-              <p>
-                <span className="font-medium text-ink-900">{t.linkedInquiry}:</span> {campaign.inquiry?.campaignName ?? t.noLinkedEntity}
-              </p>
-              <p>
-                <span className="font-medium text-ink-900">{t.createdAt}:</span> {formatDate(campaign.createdAt, locale)}
-              </p>
+              <p><span className="font-medium text-ink-900">{t.advertiser}:</span> {campaign.advertiser.name}</p>
+              <p><span className="font-medium text-ink-900">{t.owner}:</span> {campaign.owner?.name ?? t.unassigned}</p>
+              <p><span className="font-medium text-ink-900">{t.company}:</span> {campaign.company?.displayName ?? t.noLinkedEntity}</p>
+              <p><span className="font-medium text-ink-900">{t.linkedListing}:</span> {campaign.primaryListing?.title ?? t.noLinkedEntity}</p>
+              <p><span className="font-medium text-ink-900">{t.linkedInquiry}:</span> {campaign.inquiry?.campaignName ?? t.noLinkedEntity}</p>
+              <p><span className="font-medium text-ink-900">{t.createdAt}:</span> {formatDate(campaign.createdAt, locale)}</p>
+              <p><span className="font-medium text-ink-900">{t.inquiryBudget}:</span> {formatCurrency(campaign.inquiry?.budgetMaxCents ?? campaign.inquiry?.budgetMinCents)}</p>
+              <p><span className="font-medium text-ink-900">{t.booking}:</span> {campaign.inquiry?.booking ? `${formatDate(campaign.inquiry.booking.bookedFrom, locale)} - ${formatDate(campaign.inquiry.booking.bookedTo, locale)}` : t.noBooking}</p>
             </div>
 
             {campaign.brief ? (
@@ -213,6 +253,29 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
                 <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-ink-700">{campaign.internalSummary}</p>
               </div>
             ) : null}
+          </div>
+
+          <div className="glass-panel p-6">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <h2 className="font-display text-2xl font-semibold text-ink-900">{t.offer}</h2>
+            </div>
+            {acceptedOffer ? (
+              <div className="rounded-[1.5rem] border border-ink-100 bg-white/80 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-ink-900">{acceptedOffer.title}</h3>
+                    <p className="mt-1 text-sm text-ink-600">{formatCurrency(acceptedOffer.priceCents, acceptedOffer.currency)}</p>
+                  </div>
+                  <StatusBadge label={acceptedOffer.status} tone={getStatusTone(acceptedOffer.status)} />
+                </div>
+                <p className="mt-3 text-sm leading-6 text-ink-700">{parsedTerms?.body}</p>
+                {parsedTerms?.bookedFrom && parsedTerms?.bookedTo ? (
+                  <p className="mt-3 text-sm text-ink-600">{formatDate(new Date(parsedTerms.bookedFrom), locale)} - {formatDate(new Date(parsedTerms.bookedTo), locale)}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-ink-600">{t.noOffer}</p>
+            )}
           </div>
 
           <div className="glass-panel p-6">
@@ -238,9 +301,7 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
                 campaign.notes.map((note) => (
                   <article key={note.id} className="rounded-[1.5rem] border border-ink-100 bg-white/80 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-ink-900">
-                        {t.noteAuthor}: {note.author.name}
-                      </p>
+                      <p className="text-sm font-medium text-ink-900">{t.noteAuthor}: {note.author.name}</p>
                       <p className="text-xs uppercase tracking-[0.18em] text-ink-500">{formatDate(note.createdAt, locale)}</p>
                     </div>
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-ink-700">{note.body}</p>
@@ -271,17 +332,8 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
             <h2 className="font-display text-2xl font-semibold text-ink-900">{t.tasks}</h2>
             <form action={addCampaignTask} className="mt-4 space-y-3">
               <input type="hidden" name="campaignId" value={campaign.id} />
-              <input
-                name="title"
-                placeholder={t.taskTitle}
-                className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
-              />
-              <textarea
-                name="description"
-                rows={3}
-                placeholder={t.taskDescription}
-                className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
-              />
+              <input name="title" placeholder={t.taskTitle} className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm" />
+              <textarea name="description" rows={3} placeholder={t.taskDescription} className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm" />
               <select name="assigneeId" className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
                 <option value="">{t.unassigned}</option>
                 {assignees.map((assignee) => (
@@ -309,6 +361,21 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
                       <span>{task.assignee?.name ?? t.unassigned}</span>
                       <span>{task.dueDate ? `${t.dueDate}: ${formatDate(task.dueDate, locale)}` : null}</span>
                     </div>
+                    <form action={updateCampaignTaskStatus} className="mt-4 grid gap-3">
+                      <input type="hidden" name="campaignId" value={campaign.id} />
+                      <input type="hidden" name="taskId" value={task.id} />
+                      <label className="text-sm font-medium text-ink-700">
+                        {t.taskStatus}
+                        <select name="status" defaultValue={task.status} className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
+                          {campaignTaskStatusValues.map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button className="rounded-2xl bg-ink-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-ink-800">{t.updateTask}</button>
+                    </form>
                   </article>
                 ))
               )}

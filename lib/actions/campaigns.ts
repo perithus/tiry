@@ -6,9 +6,11 @@ import { requireRole } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db/prisma";
 import { createAuditLog } from "@/lib/security/audit";
 import {
+  campaignFromInquirySchema,
   campaignNoteSchema,
   campaignSchema,
   campaignStatusUpdateSchema,
+  campaignTaskStatusUpdateSchema,
   campaignTaskSchema,
   type CampaignInput
 } from "@/lib/validation/campaign";
@@ -183,5 +185,113 @@ export async function updateCampaignStatus(formData: FormData) {
 
   revalidatePath("/admin/campaigns");
   revalidatePath(`/admin/campaigns/${parsed.data.campaignId}`);
+  revalidatePath("/advertiser/campaigns");
+}
+
+export async function updateCampaignTaskStatus(formData: FormData) {
+  const session = await requireRole("ADMIN");
+  const parsed = campaignTaskStatusUpdateSchema.safeParse({
+    taskId: formData.get("taskId"),
+    campaignId: formData.get("campaignId"),
+    status: formData.get("status")
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid campaign task status payload.");
+  }
+
+  await prisma.campaignTask.update({
+    where: { id: parsed.data.taskId },
+    data: {
+      status: parsed.data.status,
+      completedAt: parsed.data.status === CampaignTaskStatus.DONE ? new Date() : null
+    }
+  });
+
+  await createAuditLog({
+    actorId: session.user.id,
+    action: AuditAction.CAMPAIGN_UPDATED,
+    entityType: "CampaignTask",
+    entityId: parsed.data.taskId,
+    metadata: { status: parsed.data.status }
+  });
+
+  revalidatePath(`/admin/campaigns/${parsed.data.campaignId}`);
+  revalidatePath("/admin/campaigns");
+}
+
+export async function createCampaignFromInquiry(formData: FormData) {
+  const session = await requireRole("ADMIN");
+  const parsed = campaignFromInquirySchema.safeParse({
+    inquiryId: formData.get("inquiryId")
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid inquiry to campaign payload.");
+  }
+
+  const inquiry = await prisma.campaignInquiry.findUnique({
+    where: { id: parsed.data.inquiryId },
+    include: {
+      advertiser: true,
+      listing: {
+        include: {
+          company: true
+        }
+      }
+    }
+  });
+
+  if (!inquiry) {
+    throw new Error("Inquiry not found.");
+  }
+
+  const existingCampaign = await prisma.campaign.findFirst({
+    where: { inquiryId: inquiry.id },
+    select: { id: true }
+  });
+
+  if (existingCampaign) {
+    revalidatePath("/admin/inquiries");
+    return;
+  }
+
+  const slug = await buildUniqueCampaignSlug(inquiry.campaignName);
+
+  const campaign = await prisma.campaign.create({
+    data: {
+      name: inquiry.campaignName,
+      slug,
+      advertiserId: inquiry.advertiserId,
+      companyId: inquiry.listing.companyId,
+      primaryListingId: inquiry.listingId,
+      inquiryId: inquiry.id,
+      ownerId: session.user.id,
+      status: CampaignStatus.PLANNING,
+      priority: "MEDIUM",
+      source: "MARKETPLACE_INQUIRY",
+      brief: inquiry.message,
+      internalSummary: `Created from inquiry by ${inquiry.advertiser.email}.`,
+      budgetCents: inquiry.budgetMaxCents ?? inquiry.budgetMinCents ?? undefined,
+      currency: "EUR",
+      plannedStartDate: inquiry.desiredStartDate ?? undefined,
+      plannedEndDate: inquiry.desiredEndDate ?? undefined
+    }
+  });
+
+  await createAuditLog({
+    actorId: session.user.id,
+    action: AuditAction.CAMPAIGN_CREATED,
+    entityType: "Campaign",
+    entityId: campaign.id,
+    metadata: {
+      inquiryId: inquiry.id,
+      advertiserId: inquiry.advertiserId
+    }
+  });
+
+  revalidatePath("/admin/inquiries");
+  revalidatePath("/admin/campaigns");
+  revalidatePath("/admin");
   revalidatePath("/advertiser/campaigns");
 }

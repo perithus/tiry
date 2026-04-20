@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db/prisma";
 import { getAdminNav } from "@/lib/data/navigation";
 import { getLocale } from "@/lib/i18n/server";
+import { createCampaignFromInquiry } from "@/lib/actions/campaigns";
 import { updateInquiryStatus } from "@/lib/actions/admin";
 
 const copy = {
@@ -19,7 +20,9 @@ const copy = {
     countries: "Countries",
     status: "Status",
     save: "Save status",
-    openCampaigns: "Open CRM"
+    openCampaigns: "Open CRM",
+    createCampaign: "Create campaign",
+    campaignExists: "Campaign linked"
   },
   pl: {
     title: "Panel administratora",
@@ -31,7 +34,9 @@ const copy = {
     countries: "Kraje",
     status: "Status",
     save: "Zapisz status",
-    openCampaigns: "Otwórz CRM"
+    openCampaigns: "Otwórz CRM",
+    createCampaign: "Utwórz kampanię",
+    campaignExists: "Kampania podpięta"
   }
 } as const;
 
@@ -82,6 +87,7 @@ export default async function AdminInquiriesPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-xl font-semibold text-ink-900">{inquiry.campaignName}</h2>
                   <StatusBadge label={inquiry.status} tone={getTone(inquiry.status)} />
+                  {inquiry.campaigns[0] ? <StatusBadge label={t.campaignExists} tone="success" /> : null}
                 </div>
                 <div className="grid gap-2 text-sm text-ink-600 md:grid-cols-2">
                   <p><span className="font-medium text-ink-900">{t.advertiser}:</span> {inquiry.advertiser.email}</p>
@@ -107,12 +113,22 @@ export default async function AdminInquiriesPage() {
                   </label>
                   <button className="rounded-2xl bg-ink-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-ink-800">{t.save}</button>
                 </form>
-                <Link
-                  href={inquiry.campaigns[0] ? `/admin/campaigns/${inquiry.campaigns[0].id}` : "/admin/campaigns"}
-                  className="inline-flex items-center justify-center rounded-2xl border border-ink-200 bg-white px-4 py-2.5 text-sm font-medium text-ink-900 hover:bg-ink-50"
-                >
-                  {t.openCampaigns}
-                </Link>
+
+                {inquiry.campaigns[0] ? (
+                  <Link
+                    href={`/admin/campaigns/${inquiry.campaigns[0].id}`}
+                    className="inline-flex items-center justify-center rounded-2xl border border-ink-200 bg-white px-4 py-2.5 text-sm font-medium text-ink-900 hover:bg-ink-50"
+                  >
+                    {t.openCampaigns}
+                  </Link>
+                ) : (
+                  <form action={createCampaignFromInquiry}>
+                    <input type="hidden" name="inquiryId" value={inquiry.id} />
+                    <button className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-2.5 text-sm font-medium text-ink-900 hover:bg-ink-50">
+                      {t.createCampaign}
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           </div>
