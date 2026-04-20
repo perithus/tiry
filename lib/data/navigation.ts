@@ -50,6 +50,7 @@ export const fleetNav: NavItem[] = [
   { href: "/fleet/availability", label: "Availability", icon: Map },
   { href: "/fleet/inquiries", label: "Inquiries", icon: Mail },
   { href: "/fleet/messages", label: "Messages", icon: MessageSquare },
+  { href: "/fleet/campaigns", label: "Campaigns", icon: Map },
   { href: "/fleet/verification", label: "Verification", icon: BadgeCheck },
   { href: "/fleet/settings", label: "Settings", icon: Settings }
 ];
@@ -60,6 +61,7 @@ export const adminNav: NavItem[] = [
   { href: "/admin/verifications", label: "Verifications", icon: BadgeCheck },
   { href: "/admin/listings", label: "Listings", icon: Search },
   { href: "/admin/inquiries", label: "Inquiries", icon: FileClock },
+  { href: "/admin/messages", label: "Messages", icon: MessageSquare },
   { href: "/admin/campaigns", label: "Campaigns", icon: Map },
   { href: "/admin/audit-logs", label: "Audit logs", icon: Shield },
   { href: "/admin/content", label: "Content", icon: CircleHelp }
@@ -89,6 +91,7 @@ export function getFleetNav(locale: Locale): NavItem[] {
     { href: "/fleet/availability", label: t.dashboard.nav.availability, icon: Map },
     { href: "/fleet/inquiries", label: t.dashboard.nav.inquiries, icon: Mail },
     { href: "/fleet/messages", label: t.dashboard.nav.messages, icon: MessageSquare },
+    { href: "/fleet/campaigns", label: t.dashboard.nav.campaigns, icon: Map },
     { href: "/fleet/verification", label: t.dashboard.nav.verification, icon: BadgeCheck },
     { href: "/fleet/settings", label: t.dashboard.nav.settings, icon: Settings }
   ];
@@ -103,6 +106,7 @@ export function getAdminNav(locale: Locale): NavItem[] {
     { href: "/admin/verifications", label: t.dashboard.nav.verifications, icon: BadgeCheck },
     { href: "/admin/listings", label: t.dashboard.nav.listings, icon: Search },
     { href: "/admin/inquiries", label: t.dashboard.nav.inquiries, icon: FileClock },
+    { href: "/admin/messages", label: t.dashboard.nav.messages, icon: MessageSquare },
     { href: "/admin/campaigns", label: t.dashboard.nav.campaigns, icon: Map },
     { href: "/admin/audit-logs", label: t.dashboard.nav.auditLogs, icon: Shield },
     { href: "/admin/content", label: t.dashboard.nav.content, icon: CircleHelp }

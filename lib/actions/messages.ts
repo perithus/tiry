@@ -35,8 +35,9 @@ export async function sendInquiryMessage(formData: FormData) {
 
   const isAdvertiser = inquiry.advertiserId === session.user.id;
   const isCarrierSide = Boolean(session.user.companyId && inquiry.listing.companyId === session.user.companyId);
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
 
-  if (!isAdvertiser && !isCarrierSide) {
+  if (!isAdvertiser && !isCarrierSide && !isAdmin) {
     throw new Error("You do not have access to this conversation.");
   }
 

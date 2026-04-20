@@ -1,6 +1,8 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { CampaignCreateForm } from "@/components/forms/campaign-create-form";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { addCampaignNote } from "@/lib/actions/campaigns";
 import { requireRole } from "@/lib/auth/permissions";
 import { getAdvertiserNav } from "@/lib/data/navigation";
 import { prisma } from "@/lib/db/prisma";
@@ -10,27 +12,35 @@ import { getLocale } from "@/lib/i18n/server";
 const copy = {
   en: {
     emptyTitle: "No campaigns yet",
-    emptyBody: "Once your inquiries move into active CRM handling, your campaigns will appear here.",
+    emptyBody: "Create your first campaign or connect one to an existing inquiry.",
     linkedListing: "Listing",
     owner: "Owner",
     booking: "Booking",
     budget: "Budget",
-    noBooking: "No booking yet"
+    noBooking: "No booking yet",
+    notes: "CRM notes",
+    notePlaceholder: "Add planning context, campaign detail, or an execution update.",
+    addNote: "Add note",
+    noNotes: "No notes yet."
   },
   pl: {
     emptyTitle: "Brak kampanii",
-    emptyBody: "Gdy Twoje zapytania przejdą do aktywnej obsługi CRM, kampanie pojawią się tutaj.",
+    emptyBody: "Utwórz swoją pierwszą kampanię albo podepnij ją pod istniejące inquiry.",
     linkedListing: "Oferta",
     owner: "Owner",
     booking: "Booking",
     budget: "Budżet",
-    noBooking: "Brak bookingu"
+    noBooking: "Brak bookingu",
+    notes: "Notatki CRM",
+    notePlaceholder: "Dodaj kontekst planowania, szczegół kampanii albo update realizacyjny.",
+    addNote: "Dodaj notatkę",
+    noNotes: "Brak notatek."
   }
 } as const;
 
 function getTone(status: string): "neutral" | "success" | "warning" | "danger" {
   if (status === "ACTIVE" || status === "COMPLETED" || status === "CONFIRMED") return "success";
-  if (status === "NEGOTIATION" || status === "READY_TO_BOOK" || status === "PENDING") return "warning";
+  if (status === "NEGOTIATION" || status === "READY_TO_BOOK" || status === "PENDING" || status === "PLANNING") return "warning";
   if (status === "CANCELLED") return "danger";
   return "neutral";
 }
@@ -51,23 +61,60 @@ export default async function AdvertiserCampaignsPage() {
   const c = copy[locale];
   const session = await requireRole("ADVERTISER");
 
-  const campaigns = await prisma.campaign.findMany({
-    where: { advertiserId: session.user.id },
-    include: {
-      owner: true,
-      primaryListing: true,
-      inquiry: {
-        include: {
-          booking: true,
-          offers: {
-            where: { status: "ACCEPTED" },
-            take: 1
+  const [campaigns, listings, inquiries] = await Promise.all([
+    prisma.campaign.findMany({
+      where: { advertiserId: session.user.id },
+      include: {
+        owner: true,
+        primaryListing: true,
+        inquiry: {
+          include: {
+            booking: true,
+            offers: {
+              where: { status: "ACCEPTED" },
+              take: 1
+            }
+          }
+        },
+        notes: {
+          include: {
+            author: true
+          },
+          orderBy: { createdAt: "desc" },
+          take: 5
+        }
+      },
+      orderBy: { updatedAt: "desc" }
+    }),
+    prisma.listing.findMany({
+      where: { status: "ACTIVE", verificationStatus: "VERIFIED" },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        title: true,
+        company: {
+          select: {
+            displayName: true
           }
         }
       }
-    },
-    orderBy: { updatedAt: "desc" }
-  });
+    }),
+    prisma.campaignInquiry.findMany({
+      where: { advertiserId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        campaignName: true,
+        listing: {
+          select: {
+            title: true
+          }
+        }
+      }
+    })
+  ]);
 
   return (
     <DashboardShell
@@ -77,6 +124,30 @@ export default async function AdvertiserCampaignsPage() {
       subheading={t.dashboard.advertiser.campaignsSubheading}
       locale={locale}
     >
+      <CampaignCreateForm
+        locale={locale}
+        advertisers={[
+          {
+            id: session.user.id,
+            label: `${session.user.name} (${session.user.email})`
+          }
+        ]}
+        companies={[]}
+        listings={listings.map((listing) => ({
+          id: listing.id,
+          label: `${listing.title} · ${listing.company.displayName}`
+        }))}
+        inquiries={inquiries.map((inquiry) => ({
+          id: inquiry.id,
+          label: `${inquiry.campaignName} · ${inquiry.listing.title}`
+        }))}
+        owners={[]}
+        redirectBase="/advertiser/campaigns"
+        appendCampaignIdToRedirect={false}
+        allowOwnerAssignment={false}
+        allowCompanyLinking={false}
+      />
+
       <div className="grid gap-4">
         {campaigns.length === 0 ? (
           <div className="glass-panel p-8 text-sm text-ink-600">
@@ -113,6 +184,34 @@ export default async function AdvertiserCampaignsPage() {
                     <p className="mt-1 text-sm text-ink-600">{formatCurrency(acceptedOffer.priceCents, acceptedOffer.currency)}</p>
                   </div>
                 ) : null}
+
+                <div className="mt-4 rounded-[1.5rem] border border-ink-100 bg-white/80 p-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-500">{c.notes}</h3>
+                  <form action={addCampaignNote} className="mt-4 grid gap-3">
+                    <input type="hidden" name="campaignId" value={campaign.id} />
+                    <textarea
+                      name="body"
+                      rows={4}
+                      placeholder={c.notePlaceholder}
+                      className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                    />
+                    <div className="flex justify-end">
+                      <button className="rounded-2xl bg-ink-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-ink-800">{c.addNote}</button>
+                    </div>
+                  </form>
+                  <div className="mt-4 space-y-3">
+                    {campaign.notes.length === 0 ? (
+                      <p className="text-sm text-ink-600">{c.noNotes}</p>
+                    ) : (
+                      campaign.notes.map((note) => (
+                        <div key={note.id} className="rounded-2xl border border-ink-100 px-4 py-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-500">{note.author.name}</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink-700">{note.body}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })

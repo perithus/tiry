@@ -626,7 +626,7 @@ model CampaignTask {
 
 model ContentPage {
   id            String            @id @default(cuid())
-  slug          String            @unique
+  slug          String
   locale        String            @default("en")
   title         String
   seoTitle      String?

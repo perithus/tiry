@@ -2,7 +2,7 @@
 
 import { AuditAction, CampaignStatus, CampaignTaskStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth/permissions";
+import { requireRole, requireSession } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db/prisma";
 import { createAuditLog } from "@/lib/security/audit";
 import {
@@ -38,13 +38,30 @@ async function buildUniqueCampaignSlug(name: string) {
 }
 
 export async function createCampaign(input: CampaignInput) {
-  const session = await requireRole("ADMIN");
+  const session = await requireSession();
   const parsed = campaignSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       ok: false as const,
       error: parsed.error.issues[0]?.message ?? "Invalid campaign payload."
+    };
+  }
+
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+  const isAdvertiser = session.user.role === "ADVERTISER";
+
+  if (!isAdmin && !isAdvertiser) {
+    return {
+      ok: false as const,
+      error: "You do not have permission to create campaigns."
+    };
+  }
+
+  if (isAdvertiser && parsed.data.advertiserId !== session.user.id) {
+    return {
+      ok: false as const,
+      error: "Advertisers can only create campaigns for their own account."
     };
   }
 
@@ -58,12 +75,12 @@ export async function createCampaign(input: CampaignInput) {
       companyId: parsed.data.companyId || undefined,
       primaryListingId: parsed.data.primaryListingId || undefined,
       inquiryId: parsed.data.inquiryId || undefined,
-      ownerId: parsed.data.ownerId || session.user.id,
-      status: parsed.data.status,
+      ownerId: isAdmin ? parsed.data.ownerId || session.user.id : undefined,
+      status: isAdmin ? parsed.data.status : CampaignStatus.PLANNING,
       priority: parsed.data.priority,
       source: parsed.data.source,
       brief: parsed.data.brief || undefined,
-      internalSummary: parsed.data.internalSummary || undefined,
+      internalSummary: isAdmin ? parsed.data.internalSummary || undefined : undefined,
       budgetCents: parsed.data.budgetCents,
       currency: parsed.data.currency.toUpperCase(),
       plannedStartDate: parsed.data.plannedStartDate ? new Date(parsed.data.plannedStartDate) : undefined,
@@ -86,6 +103,7 @@ export async function createCampaign(input: CampaignInput) {
   revalidatePath("/admin");
   revalidatePath("/admin/campaigns");
   revalidatePath("/advertiser/campaigns");
+  revalidatePath("/fleet/campaigns");
 
   return {
     ok: true as const,
@@ -94,7 +112,7 @@ export async function createCampaign(input: CampaignInput) {
 }
 
 export async function addCampaignNote(formData: FormData) {
-  const session = await requireRole("ADMIN");
+  const session = await requireSession();
   const parsed = campaignNoteSchema.safeParse({
     campaignId: formData.get("campaignId"),
     body: formData.get("body")
@@ -102,6 +120,27 @@ export async function addCampaignNote(formData: FormData) {
 
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Invalid campaign note payload.");
+  }
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: parsed.data.campaignId },
+    select: {
+      id: true,
+      advertiserId: true,
+      companyId: true
+    }
+  });
+
+  if (!campaign) {
+    throw new Error("Campaign not found.");
+  }
+
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+  const isAdvertiser = campaign.advertiserId === session.user.id;
+  const isCarrierSide = Boolean(session.user.companyId && campaign.companyId === session.user.companyId);
+
+  if (!isAdmin && !isAdvertiser && !isCarrierSide) {
+    throw new Error("You do not have access to this campaign.");
   }
 
   await prisma.campaignNote.create({
@@ -120,6 +159,8 @@ export async function addCampaignNote(formData: FormData) {
   });
 
   revalidatePath(`/admin/campaigns/${parsed.data.campaignId}`);
+  revalidatePath("/advertiser/campaigns");
+  revalidatePath("/fleet/campaigns");
 }
 
 export async function addCampaignTask(formData: FormData) {

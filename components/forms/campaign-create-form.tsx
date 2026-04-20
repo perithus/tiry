@@ -132,7 +132,11 @@ export function CampaignCreateForm({
   companies,
   listings,
   inquiries,
-  owners
+  owners,
+  redirectBase = "/admin/campaigns",
+  appendCampaignIdToRedirect = true,
+  allowOwnerAssignment = true,
+  allowCompanyLinking = true
 }: {
   locale: Locale;
   advertisers: Option[];
@@ -140,6 +144,10 @@ export function CampaignCreateForm({
   listings: Option[];
   inquiries: Option[];
   owners: Option[];
+  redirectBase?: string;
+  appendCampaignIdToRedirect?: boolean;
+  allowOwnerAssignment?: boolean;
+  allowCompanyLinking?: boolean;
 }) {
   const t = copy[locale];
   const router = useRouter();
@@ -193,7 +201,7 @@ export function CampaignCreateForm({
       setSubmitSuccess(t.success);
       reset(defaultValues);
       router.refresh();
-      router.push(`/admin/campaigns/${result.campaignId}`);
+      router.push(appendCampaignIdToRedirect ? `${redirectBase}/${result.campaignId}` : redirectBase);
     });
   });
 
@@ -219,27 +227,35 @@ export function CampaignCreateForm({
           </select>
         </Field>
 
-        <Field label={t.owner} error={errors.ownerId?.message}>
-          <select {...register("ownerId")} className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
-            <option value="">{t.unassigned}</option>
-            {owners.map((owner) => (
-              <option key={owner.id} value={owner.id}>
-                {owner.label}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {allowOwnerAssignment ? (
+          <Field label={t.owner} error={errors.ownerId?.message}>
+            <select {...register("ownerId")} className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
+              <option value="">{t.unassigned}</option>
+              {owners.map((owner) => (
+                <option key={owner.id} value={owner.id}>
+                  {owner.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : (
+          <input type="hidden" {...register("ownerId")} value="" />
+        )}
 
-        <Field label={t.company} error={errors.companyId?.message}>
-          <select {...register("companyId")} className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
-            <option value="">{t.choose}</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.label}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {allowCompanyLinking ? (
+          <Field label={t.company} error={errors.companyId?.message}>
+            <select {...register("companyId")} className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
+              <option value="">{t.choose}</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : (
+          <input type="hidden" {...register("companyId")} value="" />
+        )}
 
         <Field label={t.listing} error={errors.primaryListingId?.message}>
           <select {...register("primaryListingId")} className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
