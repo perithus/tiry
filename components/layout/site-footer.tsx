@@ -40,6 +40,9 @@ export function SiteFooter({ locale }: { locale: Locale }) {
       </div>
       <div className="container-shell pb-8">
         <div className="premium-divider" />
+        <p className="pt-5 text-center text-xs uppercase tracking-[0.18em] text-ink-500">
+          Created by Jakub Pietrus, Neuroverse
+        </p>
       </div>
     </footer>
   );
