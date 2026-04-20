@@ -6,11 +6,18 @@ import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/branding/logo";
 import { ButtonLink } from "@/components/shared/button";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { SignOutButton } from "@/components/shared/sign-out-button";
 import type { Locale } from "@/lib/i18n/shared";
 import { getMessages } from "@/lib/i18n/messages";
 import { cn } from "@/lib/utils/cn";
 
-export function SiteHeader({ locale }: { locale: Locale }) {
+export function SiteHeader({
+  locale,
+  dashboardHref
+}: {
+  locale: Locale;
+  dashboardHref?: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const t = getMessages(locale);
   const marketingNav = [
@@ -50,10 +57,21 @@ export function SiteHeader({ locale }: { locale: Locale }) {
 
         <div className="hidden items-center gap-3 lg:flex">
           <LanguageSwitcher locale={locale} />
-          <ButtonLink href="/sign-in" variant="ghost">
-            {t.nav.signIn}
-          </ButtonLink>
-          <ButtonLink href="/sign-up">{t.nav.getStarted}</ButtonLink>
+          {dashboardHref ? (
+            <>
+              <ButtonLink href={dashboardHref} variant="ghost">
+                {locale === "pl" ? "Dashboard" : "Dashboard"}
+              </ButtonLink>
+              <SignOutButton locale={locale} />
+            </>
+          ) : (
+            <>
+              <ButtonLink href="/sign-in" variant="ghost">
+                {t.nav.signIn}
+              </ButtonLink>
+              <ButtonLink href="/sign-up">{t.nav.getStarted}</ButtonLink>
+            </>
+          )}
         </div>
 
         <button
@@ -67,12 +85,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
         </button>
       </div>
 
-      <div
-        className={cn(
-          "lg:hidden",
-          open ? "pointer-events-auto" : "pointer-events-none"
-        )}
-      >
+      <div className={cn("lg:hidden", open ? "pointer-events-auto" : "pointer-events-none")}>
         <div
           onClick={() => setOpen(false)}
           className={cn(
@@ -109,17 +122,35 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             </nav>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <ButtonLink
-                href="/sign-in"
-                variant="ghost"
-                className="w-full justify-center border border-white/12 bg-white/8 text-white hover:bg-white/12"
-                onClick={() => setOpen(false)}
-              >
-                {t.nav.signIn}
-              </ButtonLink>
-              <ButtonLink href="/sign-up" className="w-full justify-center bg-white text-ink-900 hover:bg-white/90" onClick={() => setOpen(false)}>
-                {t.nav.getStarted}
-              </ButtonLink>
+              {dashboardHref ? (
+                <>
+                  <ButtonLink
+                    href={dashboardHref}
+                    variant="ghost"
+                    className="w-full justify-center border border-white/12 bg-white/8 text-white hover:bg-white/12"
+                    onClick={() => setOpen(false)}
+                  >
+                    {locale === "pl" ? "Dashboard" : "Dashboard"}
+                  </ButtonLink>
+                  <div onClick={() => setOpen(false)} className="w-full">
+                    <SignOutButton locale={locale} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ButtonLink
+                    href="/sign-in"
+                    variant="ghost"
+                    className="w-full justify-center border border-white/12 bg-white/8 text-white hover:bg-white/12"
+                    onClick={() => setOpen(false)}
+                  >
+                    {t.nav.signIn}
+                  </ButtonLink>
+                  <ButtonLink href="/sign-up" className="w-full justify-center bg-white text-ink-900 hover:bg-white/90" onClick={() => setOpen(false)}>
+                    {t.nav.getStarted}
+                  </ButtonLink>
+                </>
+              )}
             </div>
           </div>
         </div>

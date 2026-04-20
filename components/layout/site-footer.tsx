@@ -7,8 +7,9 @@ export function SiteFooter({ locale }: { locale: Locale }) {
   const t = getMessages(locale);
 
   return (
-    <footer className="border-t border-ink-100 bg-white/80">
-      <div className="container-shell grid gap-8 py-12 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
+    <footer className="relative overflow-hidden border-t border-ink-100 bg-white/80">
+      <div className="hero-orb left-[-2rem] top-10 h-32 w-32 bg-teal-200/30" />
+      <div className="container-shell relative grid gap-8 py-14 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div className="space-y-4">
           <Logo />
           <p className="max-w-md text-sm leading-6 text-ink-600">{t.footer.description}</p>
@@ -36,6 +37,9 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             { href: "/terms", label: t.footer.terms }
           ]}
         />
+      </div>
+      <div className="container-shell pb-8">
+        <div className="premium-divider" />
       </div>
     </footer>
   );
