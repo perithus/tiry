@@ -28,6 +28,14 @@ textarea {
   @apply transition duration-200 ease-out;
 }
 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  @apply outline-none ring-2 ring-teal-500 ring-offset-2 ring-offset-sand;
+}
+
 ::selection {
   @apply bg-teal-200 text-ink-900;
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { addCampaignNote } from "@/lib/actions/campaigns";
@@ -16,6 +17,7 @@ const copy = {
     budget: "Budget",
     owner: "Owner",
     notes: "Operational notes",
+    details: "Open workspace",
     empty: "No campaigns are linked to your company yet.",
     noNotes: "No notes yet.",
     notePlaceholder: "Add a fleet-side update, blocker, route note, or installation detail.",
@@ -30,6 +32,7 @@ const copy = {
     budget: "Budżet",
     owner: "Owner",
     notes: "Notatki operacyjne",
+    details: "Otwórz workspace",
     empty: "Nie ma jeszcze kampanii powiązanych z Twoją firmą.",
     noNotes: "Brak notatek.",
     notePlaceholder: "Dodaj update po stronie floty, blocker, notatkę o trasie lub szczegół montażu.",
@@ -80,9 +83,17 @@ export default async function FleetCampaignsPage() {
         ) : (
           campaigns.map((campaign) => (
             <div key={campaign.id} className="glass-panel p-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-xl font-semibold text-ink-900">{campaign.name}</h2>
-                <StatusBadge label={campaign.status} tone={getTone(campaign.status)} />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-xl font-semibold text-ink-900">{campaign.name}</h2>
+                  <StatusBadge label={campaign.status} tone={getTone(campaign.status)} />
+                </div>
+                <Link
+                  href={`/fleet/campaigns/${campaign.id}`}
+                  className="rounded-2xl border border-ink-200 bg-white px-4 py-2.5 text-sm font-medium text-ink-900 hover:bg-ink-50"
+                >
+                  {t.details}
+                </Link>
               </div>
               <div className="mt-4 grid gap-2 text-sm text-ink-600 md:grid-cols-2">
                 <p><span className="font-medium text-ink-900">{t.advertiser}:</span> {campaign.advertiser.name}</p>

@@ -21,9 +21,9 @@ export function SiteHeader({
   const [open, setOpen] = useState(false);
   const t = getMessages(locale);
   const marketingNav = [
-    { href: "/how-it-works", label: t.nav.howItWorks },
-    { href: "/advertisers", label: t.nav.advertisers },
-    { href: "/transport-companies", label: t.nav.carriers },
+    { href: "/#how-it-works", label: t.nav.howItWorks },
+    { href: "/#for-advertisers", label: t.nav.advertisers },
+    { href: "/#for-carriers", label: t.nav.carriers },
     { href: "/marketplace", label: t.nav.marketplace },
     { href: "/faq", label: t.nav.faq },
     { href: "/contact", label: t.nav.contact }

@@ -30,6 +30,9 @@ export default async function FleetCompanyPage() {
           displayName: company?.displayName ?? "",
           description: company?.description ?? "",
           websiteUrl: company?.websiteUrl ?? "",
+          email: company?.email ?? "",
+          phone: company?.phone ?? "",
+          vatNumber: company?.vatNumber ?? "",
           headquartersCity: company?.headquartersCity ?? "",
           headquartersCountry: company?.headquartersCountry ?? "",
           fleetSize: company?.fleetSize ?? 1

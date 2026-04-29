@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { signUpSchema } from "@/lib/validation/auth";
 import type { z } from "zod";
 import { Button } from "@/components/shared/button";
+import { useToast } from "@/components/shared/toast-provider";
 import type { Locale } from "@/lib/i18n/shared";
 import { getMessages } from "@/lib/i18n/messages";
 
@@ -13,6 +14,7 @@ type FormValues = z.infer<typeof signUpSchema>;
 
 export function SignUpForm({ locale }: { locale: Locale }) {
   const t = getMessages(locale);
+  const { pushToast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const {
@@ -38,12 +40,15 @@ export function SignUpForm({ locale }: { locale: Locale }) {
 
     if (!response.ok) {
       const result = (await response.json()) as { error?: string };
-      setError(result.error ?? "Unable to create account.");
+      const message = result.error ?? "Unable to create account.";
+      setError(message);
+      pushToast({ title: message, tone: "error" });
       setLoading(false);
       return;
     }
 
     const result = (await response.json()) as { redirectTo: string };
+    pushToast({ title: locale === "pl" ? "Konto zostalo utworzone." : "Account created successfully.", tone: "success" });
     window.location.href = result.redirectTo;
   });
 

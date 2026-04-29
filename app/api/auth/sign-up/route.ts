@@ -5,12 +5,14 @@ import { signUpSchema } from "@/lib/validation/auth";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { createAuditLog } from "@/lib/security/audit";
+import { assertTrustedOrigin, getClientIp } from "@/lib/security/http";
 import { consumeRateLimit } from "@/lib/rate-limit/memory";
 import { env } from "@/lib/config/env";
 import { dashboardHomeByRole } from "@/lib/auth/constants";
 
 export async function POST(request: Request) {
-  const limit = consumeRateLimit(`signup:${request.headers.get("x-forwarded-for") ?? "unknown"}`, 10, env.RATE_LIMIT_WINDOW_MS);
+  assertTrustedOrigin(request);
+  const limit = consumeRateLimit(`signup:${getClientIp(request.headers)}`, 10, env.RATE_LIMIT_WINDOW_MS);
   if (!limit.success) {
     return NextResponse.json({ error: "Too many sign-up attempts. Please try again later." }, { status: 429 });
   }

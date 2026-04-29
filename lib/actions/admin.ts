@@ -65,6 +65,7 @@ export async function updateUserAccess(formData: FormData) {
 
   revalidatePath("/admin/users");
   revalidatePath("/admin");
+  revalidatePath("/admin/security");
 }
 
 export async function reviewCompany(formData: FormData) {
@@ -180,11 +181,15 @@ export async function reviewVerificationDocument(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Invalid verification document payload.");
   }
 
-  await prisma.verificationDocument.update({
+  const document = await prisma.verificationDocument.update({
     where: { id: parsed.data.documentId },
     data: {
       status: parsed.data.status,
       reviewedAt: new Date()
+    },
+    select: {
+      id: true,
+      companyId: true
     }
   });
 
@@ -192,12 +197,15 @@ export async function reviewVerificationDocument(formData: FormData) {
     actorId: session.user.id,
     action: AuditAction.VERIFICATION_REVIEWED,
     entityType: "VerificationDocument",
-    entityId: parsed.data.documentId,
+    entityId: document.id,
     metadata: {
       status: parsed.data.status
     }
   });
 
+  if (document.companyId) {
+    revalidatePath("/fleet/company");
+  }
   revalidatePath("/admin/verifications");
   revalidatePath("/fleet/verification");
   revalidatePath("/fleet");

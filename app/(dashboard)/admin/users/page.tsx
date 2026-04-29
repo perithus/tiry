@@ -1,5 +1,6 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { PaginationControls } from "@/components/shared/pagination-controls";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { getAdminNav } from "@/lib/data/navigation";
 import { requireRole } from "@/lib/auth/permissions";
@@ -41,21 +42,38 @@ function getTone(status: string): "neutral" | "success" | "warning" | "danger" {
   return "neutral";
 }
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   noStore();
   const locale = await getLocale();
   const t = copy[locale];
   await requireRole("ADMIN");
-  const users = await prisma.user.findMany({
-    include: {
-      company: true
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50
-  });
+  const params = (await searchParams) ?? {};
+  const page = Math.max(1, Number(params.page ?? "1") || 1);
+  const pageSize = 12;
+  const [totalItems, users] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.findMany({
+      include: {
+        company: true
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    })
+  ]);
 
   return (
     <DashboardShell title={t.title} nav={getAdminNav(locale)} heading={t.heading} subheading={t.subheading} locale={locale}>
+      <div className="sticky top-20 z-10 rounded-[1.75rem] border border-white/70 bg-sand/90 px-4 py-3 shadow-sm backdrop-blur">
+        <p className="text-sm text-ink-600">
+          {locale === "pl" ? `Widocznych ${users.length} z ${totalItems} uzytkownikow.` : `Showing ${users.length} of ${totalItems} users.`}
+        </p>
+      </div>
+
       <div className="grid gap-4">
         {users.map((user) => (
           <div key={user.id} className="glass-panel p-6">
@@ -98,6 +116,9 @@ export default async function AdminUsersPage() {
             </div>
           </div>
         ))}
+      </div>
+      <div className="glass-panel overflow-hidden">
+        <PaginationControls locale={locale} page={page} pageSize={pageSize} totalItems={totalItems} basePath="/admin/users" itemLabel={locale === "pl" ? "uzytkownikow" : "users"} />
       </div>
     </DashboardShell>
   );

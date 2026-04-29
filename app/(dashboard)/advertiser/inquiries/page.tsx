@@ -7,6 +7,7 @@ import { getAdvertiserNav } from "@/lib/data/navigation";
 import { getMessages } from "@/lib/i18n/messages";
 import { getLocale } from "@/lib/i18n/server";
 import { acceptCampaignOffer } from "@/lib/actions/offers";
+import { expireStaleOffers, parseOfferTerms } from "@/lib/utils/offers";
 
 const copy = {
   en: {
@@ -15,15 +16,17 @@ const copy = {
     noOffers: "No offers yet.",
     accept: "Accept offer",
     bookedWindow: "Booked window",
-    createdBooking: "Booking created after acceptance"
+    createdBooking: "Booking created after acceptance",
+    expiresAt: "Expires"
   },
   pl: {
     listing: "Oferta",
     offers: "Oferty",
     noOffers: "Brak ofert.",
-    accept: "Akceptuj ofertę",
+    accept: "Akceptuj oferte",
     bookedWindow: "Okno bookingu",
-    createdBooking: "Booking powstanie po akceptacji"
+    createdBooking: "Booking powstanie po akceptacji",
+    expiresAt: "Wygasa"
   }
 } as const;
 
@@ -34,20 +37,14 @@ function getTone(status: string): "neutral" | "success" | "warning" | "danger" {
   return "neutral";
 }
 
-function parseOfferTerms(terms: string) {
-  try {
-    return JSON.parse(terms) as { body?: string; bookedFrom?: string; bookedTo?: string };
-  } catch {
-    return { body: terms };
-  }
-}
-
 export default async function AdvertiserInquiriesPage() {
   noStore();
   const locale = await getLocale();
   const t = getMessages(locale);
   const c = copy[locale];
   const session = await requireRole("ADVERTISER");
+  await expireStaleOffers();
+
   const inquiries = await prisma.campaignInquiry.findMany({
     where: { advertiserId: session.user.id },
     include: {
@@ -107,6 +104,11 @@ export default async function AdvertiserInquiriesPage() {
                         {terms.bookedFrom && terms.bookedTo ? (
                           <p className="mt-3 text-sm text-ink-600">
                             {c.bookedWindow}: {terms.bookedFrom} - {terms.bookedTo}
+                          </p>
+                        ) : null}
+                        {offer.expiresAt ? (
+                          <p className="mt-2 text-xs uppercase tracking-[0.16em] text-ink-500">
+                            {c.expiresAt}: {offer.expiresAt.toISOString().slice(0, 10)}
                           </p>
                         ) : null}
                         {offer.status === "SENT" && !inquiry.booking ? (

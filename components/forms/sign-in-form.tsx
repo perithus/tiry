@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signInSchema } from "@/lib/validation/auth";
 import type { z } from "zod";
 import { Button } from "@/components/shared/button";
+import { useToast } from "@/components/shared/toast-provider";
 import type { Locale } from "@/lib/i18n/shared";
 import { getMessages } from "@/lib/i18n/messages";
 
@@ -13,6 +15,7 @@ type FormValues = z.infer<typeof signInSchema>;
 
 export function SignInForm({ locale }: { locale: Locale }) {
   const t = getMessages(locale);
+  const { pushToast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const {
@@ -35,12 +38,15 @@ export function SignInForm({ locale }: { locale: Locale }) {
 
     if (!response.ok) {
       const result = (await response.json()) as { error?: string };
-      setError(result.error ?? "Unable to sign in.");
+      const message = result.error ?? "Unable to sign in.";
+      setError(message);
+      pushToast({ title: message, tone: "error" });
       setLoading(false);
       return;
     }
 
     const result = (await response.json()) as { redirectTo: string };
+    pushToast({ title: locale === "pl" ? "Logowanie zakonczone sukcesem." : "Signed in successfully.", tone: "success" });
     window.location.href = result.redirectTo;
   });
 
@@ -52,6 +58,11 @@ export function SignInForm({ locale }: { locale: Locale }) {
       <Field label={t.auth.passwordLabel} error={errors.password?.message}>
         <input {...register("password")} type="password" className="w-full rounded-2xl border-ink-200 bg-white" />
       </Field>
+      <div className="flex justify-end">
+        <Link href="/forgot-password" className="text-sm font-medium text-teal-700 hover:text-teal-800">
+          {locale === "pl" ? "Nie pamietasz hasla?" : "Forgot password?"}
+        </Link>
+      </div>
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? t.auth.signInLoading : t.auth.signInTitle}

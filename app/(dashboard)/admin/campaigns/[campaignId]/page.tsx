@@ -1,19 +1,29 @@
 import { notFound } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { CampaignActivityFeed } from "@/components/dashboard/campaign-activity-feed";
+import { CampaignFilesPanel } from "@/components/dashboard/campaign-files-panel";
+import { CampaignOperationsPanel } from "@/components/dashboard/campaign-operations-panel";
+import { AdminCampaignWrapUpPanel } from "@/components/dashboard/campaign-wrap-up-panel";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { updateBookingStatus } from "@/lib/actions/bookings";
+import { getCampaignWrapUp, listCampaignMilestones } from "@/lib/campaign-operations";
+import { listCampaignFiles } from "@/lib/campaign-files";
 import {
   addCampaignNote,
   addCampaignTask,
+  updateCampaignDetails,
   updateCampaignStatus,
-  updateCampaignTaskStatus
+  updateCampaignTaskDetails
 } from "@/lib/actions/campaigns";
 import { requireRole } from "@/lib/auth/permissions";
 import { getAdminNav } from "@/lib/data/navigation";
+import { getCampaignActivityLogs } from "@/lib/data/campaign-activity";
 import { prisma } from "@/lib/db/prisma";
 import { getLocale } from "@/lib/i18n/server";
 import type { Locale } from "@/lib/i18n/shared";
-import { campaignStatusValues, campaignTaskStatusValues } from "@/lib/validation/campaign";
+import { bookingStatusValues } from "@/lib/validation/booking";
+import { campaignPriorityValues, campaignStatusValues, campaignTaskStatusValues } from "@/lib/validation/campaign";
 
 const copy = {
   en: {
@@ -27,8 +37,16 @@ const copy = {
     company: "Carrier company",
     brief: "Campaign brief",
     summary: "Internal summary",
+    details: "Campaign details",
     notes: "Internal notes",
     tasks: "Execution tasks",
+    campaignName: "Campaign name",
+    priority: "Priority",
+    plannedStartDate: "Planned start date",
+    plannedEndDate: "Planned end date",
+    bookedStartDate: "Booked start date",
+    bookedEndDate: "Booked end date",
+    currency: "Currency",
     addNote: "Add note",
     addTask: "Add task",
     notePlaceholder: "Capture a sales update, blocker, negotiation detail, or internal decision.",
@@ -46,12 +64,38 @@ const copy = {
     noLinkedEntity: "Not linked",
     createdAt: "Created",
     booking: "Booking",
+    bookingOps: "Booking operations",
+    bookingStatus: "Booking status",
     offer: "Accepted offer",
     noOffer: "No accepted offer yet",
     noBooking: "No booking yet",
+    saveBooking: "Save booking",
     inquiryBudget: "Inquiry budget",
-    updateTask: "Update task",
-    taskStatus: "Task status"
+    budget: "Campaign budget",
+    saveDetails: "Save campaign details",
+    activity: "Activity timeline",
+    noActivity: "No campaign activity yet.",
+    saveTaskDetails: "Save task details",
+    taskStatus: "Task status",
+    files: "Campaign files",
+    filesHelp: "Keep briefs, signed PDFs, artwork, proofs, and delivery attachments in one secure campaign record.",
+    fileLabel: "File label",
+    fileLabelPlaceholder: "Optional label, e.g. signed contract",
+    fileInput: "Choose file",
+    uploadFile: "Upload file",
+    noFiles: "No files uploaded yet.",
+    openFile: "Open file",
+    uploadedBy: "Uploaded by",
+    uploadedAt: "Uploaded",
+    operations: "Campaign operations",
+    noMilestones: "No campaign milestones yet.",
+    phase: "Phase",
+    wrapUp: "Post-campaign wrap-up",
+    deliverySummary: "Delivery summary",
+    proofOfDelivery: "Proof of delivery",
+    internalOutcome: "Internal outcome",
+    renewalOpportunity: "Renewal opportunity",
+    followUpOwner: "Follow-up owner"
   },
   pl: {
     title: "Panel administratora",
@@ -64,8 +108,16 @@ const copy = {
     company: "Firma transportowa",
     brief: "Brief kampanii",
     summary: "Podsumowanie wewnętrzne",
+    details: "Dane kampanii",
     notes: "Notatki wewnętrzne",
     tasks: "Taski realizacyjne",
+    campaignName: "Nazwa kampanii",
+    priority: "Priorytet",
+    plannedStartDate: "Planowany start",
+    plannedEndDate: "Planowany koniec",
+    bookedStartDate: "Booked start",
+    bookedEndDate: "Booked end",
+    currency: "Waluta",
     addNote: "Dodaj notatkę",
     addTask: "Dodaj task",
     notePlaceholder: "Zapisz update sprzedażowy, blocker, szczegół negocjacji albo decyzję wewnętrzną.",
@@ -83,12 +135,38 @@ const copy = {
     noLinkedEntity: "Brak powiązania",
     createdAt: "Utworzono",
     booking: "Booking",
+    bookingOps: "Operacje bookingowe",
+    bookingStatus: "Status bookingu",
     offer: "Zaakceptowana oferta",
     noOffer: "Brak zaakceptowanej oferty",
     noBooking: "Brak bookingu",
+    saveBooking: "Zapisz booking",
     inquiryBudget: "Budżet inquiry",
-    updateTask: "Zaktualizuj task",
-    taskStatus: "Status taska"
+    budget: "Budżet kampanii",
+    saveDetails: "Zapisz dane kampanii",
+    activity: "Timeline aktywności",
+    noActivity: "Brak aktywności kampanii.",
+    saveTaskDetails: "Zapisz dane taska",
+    taskStatus: "Status taska",
+    files: "Pliki kampanii",
+    filesHelp: "Trzymaj briefy, podpisane PDF-y, grafiki, proofy i zalaczniki realizacyjne w jednym bezpiecznym rekordzie.",
+    fileLabel: "Etykieta pliku",
+    fileLabelPlaceholder: "Opcjonalna etykieta, np. podpisana umowa",
+    fileInput: "Wybierz plik",
+    uploadFile: "Dodaj plik",
+    noFiles: "Brak plikow.",
+    openFile: "Otworz plik",
+    uploadedBy: "Dodane przez",
+    uploadedAt: "Dodano",
+    operations: "Operacje kampanii",
+    noMilestones: "Brak milestone'ow kampanii.",
+    phase: "Etap",
+    wrapUp: "Podsumowanie po kampanii",
+    deliverySummary: "Podsumowanie realizacji",
+    proofOfDelivery: "Proof of delivery",
+    internalOutcome: "Wynik wewnetrzny",
+    renewalOpportunity: "Szansa odnowienia",
+    followUpOwner: "Owner follow-upu"
   }
 } as const;
 
@@ -168,7 +246,7 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
   await requireRole("ADMIN");
   const { campaignId } = await params;
 
-  const [campaign, assignees] = await Promise.all([
+  const [campaign, assignees, activityLogs, campaignFiles, milestones, wrapUp] = await Promise.all([
     prisma.campaign.findUnique({
       where: { id: campaignId },
       include: {
@@ -202,7 +280,11 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
       where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
       orderBy: { name: "asc" },
       select: { id: true, name: true, email: true }
-    })
+    }),
+    getCampaignActivityLogs(campaignId, 24),
+    listCampaignFiles(campaignId),
+    listCampaignMilestones(campaignId),
+    getCampaignWrapUp(campaignId)
   ]);
 
   if (!campaign) {
@@ -278,6 +360,57 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
             )}
           </div>
 
+          <CampaignFilesPanel
+            campaignId={campaign.id}
+            files={campaignFiles}
+            locale={locale}
+            copy={{
+              title: t.files,
+              uploadHelp: t.filesHelp,
+              label: t.fileLabel,
+              labelPlaceholder: t.fileLabelPlaceholder,
+              file: t.fileInput,
+              save: t.uploadFile,
+              open: t.openFile,
+              noFiles: t.noFiles,
+              uploadedBy: t.uploadedBy,
+              uploadedAt: t.uploadedAt
+            }}
+          />
+
+          <CampaignOperationsPanel
+            locale={locale}
+            campaignId={campaign.id}
+            milestones={milestones}
+            assignees={assignees}
+            copy={{
+              title: t.operations,
+              add: t.addTask,
+              noItems: t.noMilestones,
+              milestoneTitle: t.taskTitle,
+              phase: t.phase,
+              assignee: t.assignee,
+              dueDate: t.dueDate,
+              status: t.taskStatus,
+              save: t.saveTaskDetails,
+              unassigned: t.unassigned
+            }}
+          />
+
+          <AdminCampaignWrapUpPanel
+            campaignId={campaign.id}
+            wrapUp={wrapUp}
+            copy={{
+              title: t.wrapUp,
+              deliverySummary: t.deliverySummary,
+              proofOfDelivery: t.proofOfDelivery,
+              internalOutcome: t.internalOutcome,
+              renewalOpportunity: t.renewalOpportunity,
+              followUpOwner: t.followUpOwner,
+              save: t.saveDetails
+            }}
+          />
+
           <div className="glass-panel p-6">
             <div className="mb-5 flex items-center justify-between gap-3">
               <h2 className="font-display text-2xl font-semibold text-ink-900">{t.notes}</h2>
@@ -314,6 +447,125 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
 
         <div className="space-y-6">
           <div className="glass-panel p-6">
+            <h2 className="font-display text-2xl font-semibold text-ink-900">{t.details}</h2>
+            <form action={updateCampaignDetails} className="mt-4 space-y-4">
+              <input type="hidden" name="campaignId" value={campaign.id} />
+              <label className="block text-sm font-medium text-ink-700">
+                {t.campaignName}
+                <input
+                  name="name"
+                  defaultValue={campaign.name}
+                  className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                />
+              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-ink-700">
+                  {t.priority}
+                  <select name="priority" defaultValue={campaign.priority} className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
+                    {campaignPriorityValues.map((priority) => (
+                      <option key={priority} value={priority}>
+                        {priority}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm font-medium text-ink-700">
+                  {t.owner}
+                  <select name="ownerId" defaultValue={campaign.ownerId ?? ""} className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
+                    <option value="">{t.unassigned}</option>
+                    {assignees.map((assignee) => (
+                      <option key={assignee.id} value={assignee.id}>
+                        {assignee.name} ({assignee.email})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-ink-700">
+                  {t.budget}
+                  <input
+                    name="budgetCents"
+                    type="number"
+                    min="0"
+                    step="100"
+                    defaultValue={campaign.budgetCents ?? ""}
+                    className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-ink-700">
+                  {t.currency}
+                  <input
+                    name="currency"
+                    maxLength={3}
+                    defaultValue={campaign.currency}
+                    className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm uppercase"
+                  />
+                </label>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-ink-700">
+                  {t.plannedStartDate}
+                  <input
+                    name="plannedStartDate"
+                    type="date"
+                    defaultValue={campaign.plannedStartDate ? campaign.plannedStartDate.toISOString().slice(0, 10) : ""}
+                    className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-ink-700">
+                  {t.plannedEndDate}
+                  <input
+                    name="plannedEndDate"
+                    type="date"
+                    defaultValue={campaign.plannedEndDate ? campaign.plannedEndDate.toISOString().slice(0, 10) : ""}
+                    className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                  />
+                </label>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-ink-700">
+                  {t.bookedStartDate}
+                  <input
+                    name="bookedStartDate"
+                    type="date"
+                    defaultValue={campaign.bookedStartDate ? campaign.bookedStartDate.toISOString().slice(0, 10) : ""}
+                    className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-ink-700">
+                  {t.bookedEndDate}
+                  <input
+                    name="bookedEndDate"
+                    type="date"
+                    defaultValue={campaign.bookedEndDate ? campaign.bookedEndDate.toISOString().slice(0, 10) : ""}
+                    className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                  />
+                </label>
+              </div>
+              <label className="block text-sm font-medium text-ink-700">
+                {t.brief}
+                <textarea
+                  name="brief"
+                  rows={4}
+                  defaultValue={campaign.brief ?? ""}
+                  className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                />
+              </label>
+              <label className="block text-sm font-medium text-ink-700">
+                {t.summary}
+                <textarea
+                  name="internalSummary"
+                  rows={4}
+                  defaultValue={campaign.internalSummary ?? ""}
+                  className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                />
+              </label>
+              <button className="w-full rounded-2xl bg-ink-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-ink-800">{t.saveDetails}</button>
+            </form>
+          </div>
+
+          <div className="glass-panel p-6">
             <h2 className="font-display text-2xl font-semibold text-ink-900">{t.status}</h2>
             <form action={updateCampaignStatus} className="mt-4 space-y-3">
               <input type="hidden" name="campaignId" value={campaign.id} />
@@ -326,6 +578,29 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
               </select>
               <button className="w-full rounded-2xl bg-ink-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-ink-800">{t.saveStatus}</button>
             </form>
+          </div>
+
+          <div className="glass-panel p-6">
+            <h2 className="font-display text-2xl font-semibold text-ink-900">{t.bookingOps}</h2>
+            {campaign.inquiry?.booking ? (
+              <form action={updateBookingStatus} className="mt-4 space-y-3">
+                <input type="hidden" name="bookingId" value={campaign.inquiry.booking.id} />
+                <input type="hidden" name="campaignId" value={campaign.id} />
+                <label className="text-sm font-medium text-ink-700">
+                  {t.bookingStatus}
+                  <select name="status" defaultValue={campaign.inquiry.booking.status} className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
+                    {bookingStatusValues.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button className="w-full rounded-2xl bg-ink-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-ink-800">{t.saveBooking}</button>
+              </form>
+            ) : (
+              <p className="mt-4 text-sm text-ink-600">{t.noBooking}</p>
+            )}
           </div>
 
           <div className="glass-panel p-6">
@@ -361,9 +636,33 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
                       <span>{task.assignee?.name ?? t.unassigned}</span>
                       <span>{task.dueDate ? `${t.dueDate}: ${formatDate(task.dueDate, locale)}` : null}</span>
                     </div>
-                    <form action={updateCampaignTaskStatus} className="mt-4 grid gap-3">
+                    <form action={updateCampaignTaskDetails} className="mt-4 grid gap-3 rounded-2xl border border-ink-100 bg-ink-50/70 p-4">
                       <input type="hidden" name="campaignId" value={campaign.id} />
                       <input type="hidden" name="taskId" value={task.id} />
+                      <input name="title" defaultValue={task.title} placeholder={t.taskTitle} className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm" />
+                      <textarea
+                        name="description"
+                        rows={3}
+                        defaultValue={task.description ?? ""}
+                        placeholder={t.taskDescription}
+                        className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                      />
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <select name="assigneeId" defaultValue={task.assigneeId ?? ""} className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
+                          <option value="">{t.unassigned}</option>
+                          {assignees.map((assignee) => (
+                            <option key={assignee.id} value={assignee.id}>
+                              {assignee.name} ({assignee.email})
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          name="dueDate"
+                          type="date"
+                          defaultValue={task.dueDate ? task.dueDate.toISOString().slice(0, 10) : ""}
+                          className="w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm"
+                        />
+                      </div>
                       <label className="text-sm font-medium text-ink-700">
                         {t.taskStatus}
                         <select name="status" defaultValue={task.status} className="mt-2 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm">
@@ -374,13 +673,15 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
                           ))}
                         </select>
                       </label>
-                      <button className="rounded-2xl bg-ink-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-ink-800">{t.updateTask}</button>
+                      <button className="rounded-2xl bg-ink-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-ink-800">{t.saveTaskDetails}</button>
                     </form>
                   </article>
                 ))
               )}
             </div>
           </div>
+
+          <CampaignActivityFeed locale={locale} logs={activityLogs} title={t.activity} emptyLabel={t.noActivity} />
         </div>
       </div>
     </DashboardShell>

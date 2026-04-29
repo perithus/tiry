@@ -1,21 +1,73 @@
+import type { Metadata } from "next";
 import { ArrowRight, ShieldCheck, Sparkles, Truck } from "lucide-react";
+import { ListingCard } from "@/components/marketplace/listing-card";
 import { ButtonLink } from "@/components/shared/button";
 import { MetricCard } from "@/components/shared/metric-card";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { ListingCard } from "@/components/marketplace/listing-card";
 import { getFeaturedListings } from "@/lib/data/queries";
 import { heroMetrics, valueProps } from "@/lib/data/mock";
-import { getLocale } from "@/lib/i18n/server";
 import { getMessages } from "@/lib/i18n/messages";
+import { getLocale } from "@/lib/i18n/server";
+import { buildPageMetadata, organizationSchema } from "@/lib/seo";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+
+  return buildPageMetadata({
+    locale,
+    title: locale === "pl" ? "Reklama na ciezarowkach i naczepach w Europie" : "Truck Advertising Marketplace in Europe",
+    description:
+      locale === "pl"
+        ? "Znajduj zweryfikowane powierzchnie reklamowe na ciezarowkach i naczepach, wysylaj briefy kampanii i zarzadzaj bookingami w jednym marketplace B2B."
+        : "Find verified truck and trailer advertising inventory, send campaign briefs, and manage bookings in one B2B marketplace.",
+    path: "/",
+    keywords: [
+      "truck advertising europe",
+      "trailer advertising marketplace",
+      "fleet advertising platform",
+      "mobile out of home transport"
+    ]
+  });
+}
 
 export default async function HomePage() {
   const locale = await getLocale();
   const t = getMessages(locale);
   const listings = await getFeaturedListings();
+  const steps = t.marketing.how.steps;
+  const advertiserFeatures = t.marketing.advertisers.features.slice(0, 2);
+  const carrierFeatures = t.marketing.carriers.features.slice(0, 2);
+  const seoCopy = {
+    en: {
+      introTitle: "Truck advertising marketplace built for discoverability and operational trust",
+      introBody:
+        "TIY helps brands, agencies, and transport companies manage truck advertising and trailer advertising with structured inventory data, verification workflows, and campaign coordination tools. Instead of fragmented outreach, media buyers can compare verified fleet inventory, while carriers can present advertising space with route-backed commercial detail.",
+      plannerTitle: "What makes this useful for SEO and buying intent",
+      plannerPoints: [
+        "Verified truck and trailer advertising inventory across domestic and international routes.",
+        "Structured campaign inquiry workflow for advertisers looking for fleet advertising in Europe.",
+        "Operational CRM for offers, bookings, campaign notes, and delivery coordination."
+      ]
+    },
+    pl: {
+      introTitle: "Marketplace reklamy na ciezarowkach zbudowany pod widocznosc i zaufanie operacyjne",
+      introBody:
+        "TIY pomaga markom, agencjom i firmom transportowym zarzadzac reklama na ciezarowkach i naczepach dzieki uporzadkowanym danym o inventory, workflow weryfikacji i narzedziom do koordynacji kampanii. Zamiast rozproszonego outreachu, media buyerzy moga porownywac zweryfikowane inventory flot, a przewoznicy moga prezentowac powierzchnie reklamowe z realnym kontekstem handlowym i trasowym.",
+      plannerTitle: "Dlaczego ta platforma odpowiada na realny intent zakupowy",
+      plannerPoints: [
+        "Zweryfikowane inventory reklamowe na ciezarowkach i naczepach na trasach krajowych i miedzynarodowych.",
+        "Ustrukturyzowany workflow zapytan dla reklamodawcow szukajacych reklamy flotowej w Europie.",
+        "Operacyjny CRM dla ofert, bookingow, notatek kampanii i koordynacji realizacji."
+      ]
+    }
+  } as const;
+  const c = seoCopy[locale];
 
   return (
     <div className="pb-24">
-      <section className="relative overflow-hidden bg-hero-glow text-white">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema(locale)) }} />
+
+      <section id="top" className="relative overflow-hidden bg-hero-glow text-white">
         <div className="hero-grid-overlay" />
         <div className="hero-orb animate-glow left-[-4rem] top-16 h-40 w-40 bg-teal-300/35" />
         <div className="hero-orb animate-float right-[8%] top-24 h-56 w-56 bg-white/15" />
@@ -38,7 +90,7 @@ export default async function HomePage() {
                 {t.home.primaryCta}
                 <ArrowRight className="h-4 w-4" />
               </ButtonLink>
-              <ButtonLink href="/transport-companies" variant="secondary" className="border-white/20 bg-white/10 text-white ring-0 hover:-translate-y-0.5 hover:bg-white/20">
+              <ButtonLink href="/#for-carriers" variant="secondary" className="border-white/20 bg-white/10 text-white ring-0 hover:-translate-y-0.5 hover:bg-white/20">
                 {t.home.secondaryCta}
               </ButtonLink>
             </div>
@@ -77,7 +129,7 @@ export default async function HomePage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-ink-500">
-                    {locale === "pl" ? "Dla zespołów handlowych" : "For commercial teams"}
+                    {locale === "pl" ? "Dla zespolow handlowych" : "For commercial teams"}
                   </p>
                   <h2 className="font-display mt-3 text-2xl font-semibold tracking-tight text-ink-900">
                     {locale === "pl" ? "Lead, oferta, booking, kampania" : "Lead, offer, booking, campaign"}
@@ -88,7 +140,7 @@ export default async function HomePage() {
               <div className="premium-divider my-5" />
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl bg-ink-50 px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-ink-500">{locale === "pl" ? "CRM" : "CRM"}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-ink-500">CRM</p>
                   <p className="mt-2 text-sm leading-6 text-ink-700">
                     {locale === "pl"
                       ? "Kampanie, taski, notatki i ownerzy w jednym operacyjnym workflow."
@@ -96,10 +148,10 @@ export default async function HomePage() {
                   </p>
                 </div>
                 <div className="rounded-2xl bg-ink-50 px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-ink-500">{locale === "pl" ? "Supply" : "Supply"}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-ink-500">Supply</p>
                   <p className="mt-2 text-sm leading-6 text-ink-700">
                     {locale === "pl"
-                      ? "Pojazdy, listingi i dostępność prowadzone bez chaosu w mailach."
+                      ? "Pojazdy, listingi i dostepnosc prowadzone bez chaosu w mailach."
                       : "Vehicles, listings, and availability managed without email chaos."}
                   </p>
                 </div>
@@ -109,12 +161,13 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="section-wash container-shell relative py-20">
+      <section id="how-it-works" className="section-wash container-shell relative py-20">
         <SectionHeading eyebrow={t.home.whyEyebrow} title={t.home.whyTitle} description={t.home.whyDescription} />
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {valueProps.map((item, index) => {
             const icons = [Truck, Sparkles, ShieldCheck];
             const Icon = icons[index] ?? Sparkles;
+
             return (
               <div
                 key={item.title}
@@ -132,9 +185,26 @@ export default async function HomePage() {
             );
           })}
         </div>
+
+        <div className="mt-12 glass-panel p-8">
+          <SectionHeading
+            eyebrow={t.marketing.how.eyebrow}
+            title={t.marketing.how.title}
+            description={t.marketing.how.description}
+          />
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            {steps.map((step, index) => (
+              <article key={step.title} className="rounded-[1.75rem] border border-ink-100 bg-white/80 p-6">
+                <p className="text-sm font-semibold text-teal-700">0{index + 1}</p>
+                <h3 className="mt-4 font-display text-2xl font-semibold tracking-tight text-ink-900">{step.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-ink-600">{step.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
-      <section className="container-shell py-8">
+      <section id="featured-listings" className="container-shell py-8">
         <SectionHeading eyebrow={t.home.featuredEyebrow} title={t.home.featuredTitle} description={t.home.featuredDescription} />
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           {listings.map((listing, index) => (
@@ -142,6 +212,72 @@ export default async function HomePage() {
               <ListingCard listing={listing} />
             </div>
           ))}
+        </div>
+      </section>
+
+      <section id="for-advertisers" className="container-shell py-12">
+        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="glass-panel p-8">
+            <h2 className="font-display text-3xl font-semibold tracking-tight text-ink-900">{c.introTitle}</h2>
+            <p className="mt-4 text-sm leading-7 text-ink-600">{c.introBody}</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <ButtonLink href="/advertisers">{locale === "pl" ? "Strefa reklamodawcy" : "Advertiser hub"}</ButtonLink>
+              <ButtonLink href="/marketplace" variant="secondary">
+                {locale === "pl" ? "Przegladaj inventory" : "Browse inventory"}
+              </ButtonLink>
+            </div>
+          </div>
+          <div className="glass-panel p-8">
+            <h2 className="font-display text-3xl font-semibold tracking-tight text-ink-900">{c.plannerTitle}</h2>
+            <ul className="mt-4 space-y-3 text-sm leading-7 text-ink-600">
+              {c.plannerPoints.map((point) => (
+                <li key={point} className="rounded-2xl bg-ink-50 px-4 py-3">
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          {advertiserFeatures.map(([title, body]) => (
+            <div key={title} className="glass-panel p-6">
+              <h3 className="font-display text-2xl font-semibold tracking-tight text-ink-900">{title}</h3>
+              <p className="mt-3 text-sm leading-7 text-ink-600">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="for-carriers" className="container-shell py-4">
+        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="glass-panel p-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">
+              {locale === "pl" ? "Dla firm transportowych" : "For transport companies"}
+            </p>
+            <h2 className="font-display mt-4 text-3xl font-semibold tracking-tight text-ink-900">
+              {locale === "pl" ? "Monetyzuj flote bez chaosu operacyjnego" : "Monetize fleet inventory without operational chaos"}
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-ink-600">
+              {locale === "pl"
+                ? "Buduj listingi, zarzadzaj inquiry, kontroluj bookingi i prowadz zespol przez jeden CRM flotowy zamiast arkuszy i rozproszonych wiadomosci."
+                : "Build listings, manage inquiries, control bookings, and coordinate your team from one fleet CRM instead of scattered spreadsheets and messages."}
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <ButtonLink href="/transport-companies">{locale === "pl" ? "Dla flot" : "For fleets"}</ButtonLink>
+              <ButtonLink href="/how-it-works" variant="secondary">
+                {locale === "pl" ? "Zobacz workflow" : "See workflow"}
+              </ButtonLink>
+            </div>
+          </div>
+          <div className="grid gap-6">
+            {carrierFeatures.map(([title, body]) => (
+              <div key={title} className="glass-panel p-6">
+                <h3 className="font-display text-2xl font-semibold tracking-tight text-ink-900">{title}</h3>
+                <p className="mt-3 text-sm leading-7 text-ink-600">{body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </div>

@@ -21,6 +21,7 @@ const copy = {
     documentStatus: "Document status",
     save: "Save review",
     saveDocument: "Save document",
+    openDocument: "Open document",
     noHeadquarters: "Unknown HQ",
     noDocuments: "No documents uploaded"
   },
@@ -37,6 +38,7 @@ const copy = {
     documentStatus: "Status dokumentu",
     save: "Zapisz review",
     saveDocument: "Zapisz dokument",
+    openDocument: "OtwĂłrz dokument",
     noHeadquarters: "Nieznana siedziba",
     noDocuments: "Brak dodanych dokumentów"
   }
@@ -73,6 +75,7 @@ export default async function AdminVerificationsPage() {
           type: true,
           status: true,
           filename: true,
+          storageKey: true,
           mimeType: true,
           sizeBytes: true,
           reviewedAt: true
@@ -136,6 +139,14 @@ export default async function AdminVerificationsPage() {
                                     {document.reviewedAt.toLocaleDateString(locale)}
                                   </p>
                                 ) : null}
+                                <a
+                                  href={`/api/verification-documents/${document.id}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-2 inline-flex text-sm font-medium text-teal-700 hover:text-teal-800"
+                                >
+                                  {t.openDocument}
+                                </a>
                               </div>
                               <StatusBadge label={document.status} tone={getTone(document.status)} />
                             </div>

@@ -5,11 +5,13 @@ import { consumeRateLimit } from "@/lib/rate-limit/memory";
 import { createAuditLog } from "@/lib/security/audit";
 import { toActionError } from "@/lib/security/errors";
 import { verifyCaptcha } from "@/lib/security/captcha";
+import { assertTrustedOrigin, getClientIp } from "@/lib/security/http";
 import { contactFormSchema } from "@/lib/validation/contact";
 
 export async function POST(request: Request) {
   try {
-    const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+    assertTrustedOrigin(request);
+    const ip = getClientIp(request.headers);
     const limit = consumeRateLimit(`contact:${ip}`, 8, env.RATE_LIMIT_WINDOW_MS);
 
     if (!limit.success) {

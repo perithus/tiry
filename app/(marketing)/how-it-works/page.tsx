@@ -1,6 +1,23 @@
+import type { Metadata } from "next";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { getLocale } from "@/lib/i18n/server";
 import { getMessages } from "@/lib/i18n/messages";
+import { buildPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+
+  return buildPageMetadata({
+    locale,
+    title: locale === "pl" ? "Jak działa reklama na ciężarówkach w TIY" : "How Truck Advertising Works on TIY",
+    description:
+      locale === "pl"
+        ? "Poznaj workflow od dodania inventory i weryfikacji przewoźnika po zapytania, oferty, booking i realizację kampanii."
+        : "Learn the workflow from carrier verification and inventory creation to inquiries, offers, bookings, and campaign delivery.",
+    path: "/how-it-works",
+    keywords: ["how truck advertising works", "truck advertising workflow", "fleet media booking process"]
+  });
+}
 
 export default async function HowItWorksPage() {
   const locale = await getLocale();
@@ -22,6 +39,11 @@ export default async function HowItWorksPage() {
             <p className="mt-3 text-sm leading-7 text-ink-600">{step.body}</p>
           </div>
         ))}
+      </div>
+      <div className="mt-10 rounded-[1.75rem] border border-ink-100 bg-white/80 p-6 text-sm leading-7 text-ink-600">
+        {locale === "pl"
+          ? "Ten workflow porządkuje zakup i sprzedaż reklamy na ciężarówkach: od discovery inventory, przez zapytania i oferty, po booking, notatki operacyjne i koordynację kampanii."
+          : "This workflow structures how truck advertising is bought and sold: from inventory discovery and campaign inquiries to offers, bookings, operational notes, and campaign coordination."}
       </div>
     </section>
   );

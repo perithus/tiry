@@ -44,6 +44,17 @@ export function CompanyProfileForm({ defaultValues }: { defaultValues: FormValue
         <Field label="Website" error={errors.websiteUrl?.message}>
           <input {...register("websiteUrl")} className="w-full rounded-2xl border-ink-200 bg-white" />
         </Field>
+        <Field label="Company email" error={errors.email?.message}>
+          <input {...register("email")} className="w-full rounded-2xl border-ink-200 bg-white" />
+        </Field>
+        <Field label="Company phone" error={errors.phone?.message}>
+          <input {...register("phone")} className="w-full rounded-2xl border-ink-200 bg-white" />
+        </Field>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Field label="VAT number" error={errors.vatNumber?.message}>
+          <input {...register("vatNumber")} className="w-full rounded-2xl border-ink-200 bg-white" />
+        </Field>
         <Field label="Headquarters city" error={errors.headquartersCity?.message}>
           <input {...register("headquartersCity")} className="w-full rounded-2xl border-ink-200 bg-white" />
         </Field>

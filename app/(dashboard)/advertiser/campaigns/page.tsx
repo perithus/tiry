@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { CampaignCreateForm } from "@/components/forms/campaign-create-form";
@@ -19,6 +20,7 @@ const copy = {
     budget: "Budget",
     noBooking: "No booking yet",
     notes: "CRM notes",
+    details: "Open workspace",
     notePlaceholder: "Add planning context, campaign detail, or an execution update.",
     addNote: "Add note",
     noNotes: "No notes yet."
@@ -32,6 +34,7 @@ const copy = {
     budget: "Budżet",
     noBooking: "Brak bookingu",
     notes: "Notatki CRM",
+    details: "Otwórz workspace",
     notePlaceholder: "Dodaj kontekst planowania, szczegół kampanii albo update realizacyjny.",
     addNote: "Dodaj notatkę",
     noNotes: "Brak notatek."
@@ -160,10 +163,18 @@ export default async function AdvertiserCampaignsPage() {
             const acceptedOffer = campaign.inquiry?.offers[0];
             return (
               <div key={campaign.id} className="glass-panel p-6">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="font-display text-2xl font-semibold text-ink-900">{campaign.name}</h2>
-                  <StatusBadge label={campaign.status} tone={getTone(campaign.status)} />
-                  {booking ? <StatusBadge label={booking.status} tone={getTone(booking.status)} /> : null}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="font-display text-2xl font-semibold text-ink-900">{campaign.name}</h2>
+                    <StatusBadge label={campaign.status} tone={getTone(campaign.status)} />
+                    {booking ? <StatusBadge label={booking.status} tone={getTone(booking.status)} /> : null}
+                  </div>
+                  <Link
+                    href={`/advertiser/campaigns/${campaign.id}`}
+                    className="rounded-2xl border border-ink-200 bg-white px-4 py-2.5 text-sm font-medium text-ink-900 hover:bg-ink-50"
+                  >
+                    {c.details}
+                  </Link>
                 </div>
 
                 <div className="mt-4 grid gap-2 text-sm text-ink-600 md:grid-cols-2">

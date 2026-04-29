@@ -55,9 +55,11 @@ export async function createSession(user: SessionUser) {
 
   (await cookies()).set(SESSION_COOKIE_NAME, jwt, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: new URL(env.APP_URL).protocol === "https:",
+    sameSite: "strict",
     path: "/",
+    priority: "high",
+    maxAge: SESSION_TTL_SECONDS,
     expires: expiresAt
   });
 }
@@ -87,6 +89,23 @@ export async function getSession() {
 
     if (!session) {
       return null;
+    }
+
+    if (session.user.status === "SUSPENDED") {
+      await prisma.session.deleteMany({
+        where: {
+          id: session.id
+        }
+      });
+
+      return null;
+    }
+
+    if (Date.now() - session.lastSeenAt.getTime() > 5 * 60 * 1000) {
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { lastSeenAt: new Date() }
+      });
     }
 
     return {
@@ -123,9 +142,10 @@ export async function destroySession() {
 
   (await cookies()).set(SESSION_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: new URL(env.APP_URL).protocol === "https:",
+    sameSite: "strict",
     path: "/",
+    priority: "high",
     expires: new Date(0)
   });
 }

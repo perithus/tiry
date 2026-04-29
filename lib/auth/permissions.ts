@@ -4,8 +4,8 @@ import { getSession } from "@/lib/auth/session";
 
 const roleWeight: Record<UserRole, number> = {
   ADVERTISER: 10,
-  CARRIER_OWNER: 20,
-  FLEET_MANAGER: 30,
+  FLEET_MANAGER: 20,
+  CARRIER_OWNER: 30,
   ADMIN: 40,
   SUPER_ADMIN: 50
 };

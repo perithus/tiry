@@ -4,7 +4,8 @@ import { LOCALE_COOKIE_NAME, pickLocale } from "@/lib/i18n/shared";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const locale = pickLocale(searchParams.get("locale"));
-  const redirectTo = searchParams.get("redirectTo") || "/";
+  const redirectTarget = searchParams.get("redirectTo") || "/";
+  const redirectTo = redirectTarget.startsWith("/") ? redirectTarget : "/";
 
   const response = NextResponse.redirect(new URL(redirectTo, origin));
   response.cookies.set(LOCALE_COOKIE_NAME, locale, {
